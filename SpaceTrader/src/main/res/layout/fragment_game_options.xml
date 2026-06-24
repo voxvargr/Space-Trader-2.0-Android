@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  ~ Copyright (c) 2014 Benjamin Schieder
+  ~
+  ~ This program is free software; you can redistribute it and/or
+  ~ modify it under the terms of the GNU General Public License
+  ~ as published by the Free Software Foundation; either version 2
+  ~ of the License, or (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program; if not, write to the Free Software
+  ~ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+  -->
+
+<ScrollView
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	                android:layout_width="match_parent"
+	                android:layout_height="wrap_content">
+
+		<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:textAppearance="?android:attr/textAppearanceLarge"
+				android:text="Game options"
+				android:id="@+id/textView"
+				android:layout_alignParentTop="true"
+				android:layout_centerHorizontal="true"
+				android:textStyle="bold"/>
+
+		<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:textAppearance="?android:attr/textAppearanceMedium"
+				android:text="Always ignore these when it is safe:"
+				android:id="@+id/textView2"
+				android:layout_below="@+id/textView"
+				android:layout_alignParentLeft="true"
+				/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Police"
+				android:id="@+id/chkBoxIgnorePolice"
+				android:layout_below="@+id/textView2"
+				android:layout_alignParentLeft="true"
+
+				android:onClick="btnSetOption"
+				android:checked="false"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Pirates"
+				android:id="@+id/chkBoxIgnorePiraces"
+				android:layout_below="@+id/textView2"
+				android:layout_toRightOf="@+id/chkBoxIgnorePolice"
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Traders"
+				android:id="@+id/chkBoxIgnoreTraders"
+				android:layout_below="@+id/textView2"
+				android:layout_toRightOf="@+id/chkBoxIgnorePiraces"
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Ignore trade offers in orbit"
+				android:id="@+id/chkBoxIgnoreTradeOffers"
+				android:layout_below="@+id/chkBoxIgnorePolice"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:textAppearance="?android:attr/textAppearanceMedium"
+				android:text="Arrival options"
+				android:id="@+id/textView3"
+				android:layout_below="@+id/chkBoxIgnoreTradeOffers"
+				android:layout_alignParentLeft="true"
+				/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Automatically buy fuel"
+				android:id="@+id/chkBoxAutoFuel"
+				android:layout_below="@+id/textView3"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Automatically buy repairs"
+				android:id="@+id/chkBoxAutoRepair"
+				android:layout_below="@+id/chkBoxAutoFuel"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:textAppearance="?android:attr/textAppearanceMedium"
+				android:text="Travel options"
+				android:id="@+id/textView4"
+				android:layout_below="@+id/chkBoxAutoRepair"
+				android:layout_alignParentLeft="true"
+				/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Always show system information"
+				android:id="@+id/chkBoxAlwaysInfo"
+				android:layout_below="@+id/textView4"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Reserve money for insurance, mercenaries"
+				android:id="@+id/chkBoxReserveMoney"
+				android:layout_below="@+id/chkBoxAlwaysInfo"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Continuous Attacking/Fleeing"
+				android:id="@+id/chkBoxContinuous"
+				android:layout_below="@+id/chkBoxReserveMoney"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Continue attacking fleeing enemies"
+				android:id="@+id/chkBoxAttackFleeing"
+				android:layout_below="@+id/chkBoxContinuous"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Automatically pay for newspaper"
+				android:id="@+id/chkBoxAutoPayNewspaper"
+				android:layout_below="@+id/chkBoxAttackFleeing"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Debt reminder"
+				android:id="@+id/chkBoxDebtReminder"
+				android:layout_below="@+id/chkBoxAutoPayNewspaper"
+				android:layout_alignParentLeft="true"
+
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Autosave on arrival"
+				android:id="@+id/chkBoxSaveOnArrival"
+				android:layout_below="@+id/chkBoxDebtReminder"
+				android:layout_alignParentLeft="true"
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:textAppearance="?android:attr/textAppearanceMedium"
+				android:text="Save / Load"
+				android:id="@+id/textViewSaveLoad"
+				android:layout_below="@+id/chkBoxSaveOnArrival"
+				android:layout_alignParentLeft="true"/>
+
+		<Button
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:text="Save Now / Update Autosave"
+				android:id="@+id/btnManualSaveNow"
+				android:layout_below="@+id/textViewSaveLoad"
+				android:layout_alignParentLeft="true"
+				android:onClick="btnManualSaveNow"/>
+
+		<Button
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:text="Load Autosave"
+				android:id="@+id/btnLoadAutosave"
+				android:layout_below="@+id/btnManualSaveNow"
+				android:layout_alignParentLeft="true"
+				android:onClick="btnLoadAutosave"/>
+
+		<LinearLayout
+				android:id="@+id/saveSlotButtonRow"
+				android:orientation="horizontal"
+				android:layout_width="fill_parent"
+				android:layout_height="wrap_content"
+				android:layout_below="@+id/btnLoadAutosave"
+				android:layout_alignParentLeft="true"
+				android:layout_alignParentRight="true">
+
+			<Button
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:text="Save 1"
+					android:id="@+id/btnSaveSlot1"
+					android:layout_weight="1"
+					android:onClick="btnSaveSlot1"/>
+
+			<Button
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:text="Save 2"
+					android:id="@+id/btnSaveSlot2"
+					android:layout_weight="1"
+					android:onClick="btnSaveSlot2"/>
+
+			<Button
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:text="Save 3"
+					android:id="@+id/btnSaveSlot3"
+					android:layout_weight="1"
+					android:onClick="btnSaveSlot3"/>
+		</LinearLayout>
+
+		<LinearLayout
+				android:id="@+id/loadSlotButtonRow"
+				android:orientation="horizontal"
+				android:layout_width="fill_parent"
+				android:layout_height="wrap_content"
+				android:layout_below="@+id/saveSlotButtonRow"
+				android:layout_alignParentLeft="true"
+				android:layout_alignParentRight="true">
+
+			<Button
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:text="Load 1"
+					android:id="@+id/btnLoadSlot1"
+					android:layout_weight="1"
+					android:onClick="btnLoadSlot1"/>
+
+			<Button
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:text="Load 2"
+					android:id="@+id/btnLoadSlot2"
+					android:layout_weight="1"
+					android:onClick="btnLoadSlot2"/>
+
+			<Button
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:text="Load 3"
+					android:id="@+id/btnLoadSlot3"
+					android:layout_weight="1"
+					android:onClick="btnLoadSlot3"/>
+		</LinearLayout>
+
+		<Button
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:text="Delete All Local Saves"
+				android:id="@+id/btnDeleteAllSaves"
+				android:layout_below="@+id/loadSlotButtonRow"
+				android:layout_alignParentLeft="true"
+				android:onClick="btnDeleteAllSaves"/>
+
+		<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Select theme"
+				android:id="@+id/textView5"
+				android:layout_below="@+id/btnDeleteAllSaves"
+				android:textAppearance="?android:attr/textAppearanceMedium"/>
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Experimental graphics"
+				android:id="@+id/chkBoxBetterGfx"
+				android:layout_below="@+id/textView5"
+				android:layout_alignParentLeft="true"
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<LinearLayout
+				android:id="@+id/themeButtonRow"
+				android:orientation="horizontal"
+				android:layout_width="fill_parent"
+				android:layout_height="wrap_content"
+				android:layout_below="@+id/chkBoxBetterGfx"
+				android:layout_alignParentLeft="true"
+				android:layout_alignParentRight="true">
+
+			<Button
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Dark Theme"
+					android:id="@+id/btnDarkTheme"
+					android:layout_weight="1"
+					android:onClick="btnChangeTheme"/>
+
+			<Button
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Light Theme"
+					android:id="@+id/btnLightTheme"
+					android:layout_weight="1"
+					android:onClick="btnChangeTheme"/>
+		</LinearLayout>
+
+
+		<CheckBox
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Enable debug tools (temporary)"
+				android:id="@+id/chkBoxDebugEnabled"
+				android:layout_below="@+id/themeButtonRow"
+				android:layout_alignParentLeft="true"
+				android:checked="false"
+				android:onClick="btnSetOption"/>
+
+		<Button
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:text="Open Debug Menu"
+				android:id="@+id/btnOpenDebugMenu"
+				android:layout_below="@+id/chkBoxDebugEnabled"
+				android:layout_alignParentLeft="true"
+				android:onClick="btnOpenDebugMenu"/>
+
+	</RelativeLayout>
+</ScrollView>

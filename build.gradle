@@ -1,0 +1,5 @@
+// Top-level build file for Space Trader 2.0.
+// Modernized so current Android Studio can import the OG port without the old Gradle 6.5/JVM error.
+plugins {
+    id 'com.android.application' version '8.13.0' apply false
+}

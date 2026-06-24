@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  ~ Copyright (c) 2014 Benjamin Schieder
+  ~
+  ~ This program is free software; you can redistribute it and/or
+  ~ modify it under the terms of the GNU General Public License
+  ~ as published by the Free Software Foundation; either version 2
+  ~ of the License, or (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program; if not, write to the Free Software
+  ~ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+  -->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          android:versionCode="144"
+          android:versionName="1.4.4">
+
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+	<application
+			android:allowBackup="true"
+			android:icon="@drawable/spacetrader"
+			android:label="@string/app_name">
+		<activity
+				android:name="de.anderdonau.spacetrader.Main"
+				android:exported="false"
+				android:label="@string/app_name"
+				android:screenOrientation="portrait"/>
+
+		<!-- Explicit launcher alias for modern Android launchers.
+		     The old port relied on the activity intent-filter directly, but some
+		     modern installs can treat that as non-launchable after the Gradle/AGP
+		     migration. This alias gives Android a clear exported launcher entry. -->
+		<activity-alias
+				android:name="de.anderdonau.spacetrader.Launcher"
+				android:enabled="true"
+				android:exported="true"
+				android:icon="@drawable/spacetrader"
+				android:label="@string/app_name"
+				android:targetActivity="de.anderdonau.spacetrader.Main">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN"/>
+				<category android:name="android.intent.category.LAUNCHER"/>
+			</intent-filter>
+		</activity-alias>
+	</application>
+
+</manifest>

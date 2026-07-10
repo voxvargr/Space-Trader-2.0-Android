@@ -21,6 +21,11 @@ package de.anderdonau.spacetrader;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
+import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,6 +40,10 @@ import de.anderdonau.spacetrader.DataTypes.Ship;
 import de.anderdonau.spacetrader.DataTypes.ShipTypes;
 
 public class FragmentEncounter extends MyFragment {
+	private static final float ENCOUNTER_TEXT_MAX_SP = 18.0f;
+	private static final float ENCOUNTER_TEXT_MIN_SP = 13.0f;
+	private static final int   ENCOUNTER_TEXT_MIN_LINES = 4;
+
 	public Button btnAttack, btnFlee, btnSubmit, btnBribe, btnIgnore, btnYield, btnBoard, btnPlunder,
 		btnSurrender, btnDrink, btnMeet, btnTrade, btnInt, btnDebugKO, btnDebugPlunder;
 	public ProgressBar pBarEncounter;
@@ -134,11 +143,12 @@ public class FragmentEncounter extends MyFragment {
 			buf += ".\n\n";
 		}
 		if (gameState.LastTravelEventIntro != null && gameState.LastTravelEventIntro.length() > 0) {
-			buf = gameState.LastTravelEventIntro + "\n\n" + buf;
+			buf = compactEncounterIntro(gameState.LastTravelEventIntro) + "\n\n" + buf;
 			gameState.LastTravelEventIntro = "";
 		}
 		buf += EncounterText.getText().toString();
 		EncounterText.setText(buf);
+		fitEncounterText();
 
 		Bitmap tribble = BitmapFactory.decodeResource(main.getResources(), R.drawable.tribble);
 		d = (int) Math.ceil(Math.sqrt(Ship.tribbles / 250));
@@ -169,6 +179,61 @@ public class FragmentEncounter extends MyFragment {
 			imageView.setVisibility(View.GONE);
 		}
 		return rootView;
+	}
+
+	private String compactEncounterIntro(String intro) {
+		if (intro == null) {
+			return "";
+		}
+		String cleaned = intro.trim();
+		if (cleaned.length() <= 360) {
+			return cleaned;
+		}
+		String[] parts = cleaned.split("\\n\\n+");
+		if (parts.length > 1) {
+			cleaned = parts[parts.length - 1].trim();
+		}
+		if (cleaned.length() <= 360) {
+			return cleaned;
+		}
+		return cleaned.substring(0, 337).trim() + "...";
+	}
+
+	private void fitEncounterText() {
+		EncounterText.setTextSize(TypedValue.COMPLEX_UNIT_SP, ENCOUNTER_TEXT_MAX_SP);
+		EncounterText.setMaxLines(Integer.MAX_VALUE);
+		EncounterText.setEllipsize(TextUtils.TruncateAt.END);
+		EncounterText.post(new Runnable() {
+			@Override
+			public void run() {
+				int width = EncounterText.getWidth() - EncounterText.getPaddingLeft() - EncounterText.getPaddingRight();
+				int height = EncounterText.getHeight() - EncounterText.getPaddingTop() - EncounterText.getPaddingBottom();
+				if (width <= 0 || height <= 0) {
+					return;
+				}
+				float textSize = ENCOUNTER_TEXT_MAX_SP;
+				while (textSize > ENCOUNTER_TEXT_MIN_SP && measuredTextHeight(textSize, width) > height) {
+					textSize -= 1.0f;
+				}
+				EncounterText.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize);
+				int lineHeight = Math.max(1, EncounterText.getLineHeight());
+				int maxLines = Math.max(ENCOUNTER_TEXT_MIN_LINES, height / lineHeight);
+				EncounterText.setMaxLines(maxLines);
+			}
+		});
+	}
+
+	private int measuredTextHeight(float textSizeSp, int width) {
+		TextPaint paint = new TextPaint(EncounterText.getPaint());
+		paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, textSizeSp,
+			getResources().getDisplayMetrics()));
+		StaticLayout layout = StaticLayout.Builder.obtain(EncounterText.getText(), 0,
+			EncounterText.getText().length(), paint, width)
+			.setAlignment(Layout.Alignment.ALIGN_NORMAL)
+			.setLineSpacing(EncounterText.getLineSpacingExtra(), EncounterText.getLineSpacingMultiplier())
+			.setIncludePad(true)
+			.build();
+		return layout.getHeight();
 	}
 
 	public void EncounterButtons() {

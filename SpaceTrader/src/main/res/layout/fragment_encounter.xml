@@ -52,20 +52,25 @@
 			/>
 
 	<TextView
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
 			android:textAppearance="?android:attr/textAppearanceMedium"
 			android:text="Encounter Text."
 			android:id="@+id/txtEncounterText"
-
+			android:layout_above="@+id/encounterButtonBar"
 			android:layout_below="@+id/pBarEncounter"
-			android:layout_alignParentLeft="true"/>
+			android:layout_alignParentLeft="true"
+			android:layout_alignParentRight="true"
+			android:ellipsize="end"
+			android:gravity="top"
+			android:paddingLeft="4dp"
+			android:paddingRight="4dp"/>
 
 	<LinearLayout
+			android:id="@+id/encounterButtonBar"
 			android:orientation="horizontal"
 			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:layout_below="@+id/txtEncounterText"
+			android:layout_height="wrap_content"
 			android:layout_alignParentBottom="true"
 			android:layout_alignParentLeft="true"
 			android:layout_alignParentRight="true">
@@ -73,7 +78,7 @@
 		<LinearLayout
 				android:orientation="vertical"
 				android:layout_width="0dp"
-				android:layout_height="fill_parent"
+				android:layout_height="wrap_content"
 				android:layout_weight="1"
 				android:gravity="bottom">
 
@@ -117,7 +122,7 @@
 		<LinearLayout
 				android:orientation="vertical"
 				android:layout_width="0dp"
-				android:layout_height="fill_parent"
+				android:layout_height="wrap_content"
 				android:id="@+id/linearLayout"
 				android:layout_weight="1"
 				android:gravity="bottom">
@@ -162,7 +167,7 @@
 		<LinearLayout
 				android:orientation="vertical"
 				android:layout_width="0dp"
-				android:layout_height="fill_parent"
+				android:layout_height="wrap_content"
 				android:id="@+id/linearLayout2"
 				android:layout_weight="1"
 				android:gravity="bottom">
@@ -232,7 +237,7 @@
 		<LinearLayout
 				android:orientation="vertical"
 				android:layout_width="0dp"
-				android:layout_height="fill_parent"
+				android:layout_height="wrap_content"
 				android:id="@+id/linearLayout3"
 				android:layout_weight="1"
 				android:gravity="bottom">

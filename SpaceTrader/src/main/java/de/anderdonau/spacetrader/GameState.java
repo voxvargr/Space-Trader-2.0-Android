@@ -80,6 +80,12 @@ public class GameState implements Serializable {
 	public static final int           TRADERSKILL                 = 2;
 	public static final int           ENGINEERSKILL               = 3;
 	public static final int           MAXSKILLTYPE                = 4;
+	public static final int           TRAVELDUTY_OFF              = -1;
+	public static final int           TRAVELDUTY_REPAIR           = 0;
+	public static final int           TRAVELDUTY_SCANNER          = 1;
+	public static final int           TRAVELDUTY_TARGETING        = 2;
+	public static final int           TRAVELDUTY_TRANSMISSIONS    = 3;
+	public static final int           MAXENCOUNTERFLEETSIZE       = 5;
 	public static final int           SKILLBONUS                  = 3;
 	public static final int           CLOAKBONUS                  = 2;
 	// Tradeitems
@@ -565,6 +571,14 @@ public class GameState implements Serializable {
 	public              boolean       DebugUnlimitedFuel          = false;
 	public              boolean       DebugEncounterCheats        = false;
 	public              String        LastTravelEventIntro        = "";
+	public              int           TravelRepairCrew            = TRAVELDUTY_OFF;
+	public              int           TravelScannerCrew           = TRAVELDUTY_OFF;
+	public              int           TravelTargetingCrew         = TRAVELDUTY_OFF;
+	public              int           TravelTransmissionsCrew     = TRAVELDUTY_OFF;
+	public              int           EncounterPlayerFleetSize    = 1;
+	public              int           EncounterOpponentFleetSize  = 1;
+	public              int           EncounterOpponentFleetFaction = -1;
+	public              boolean       EncounterFleetPrepared      = false;
 	// Space Trader 2.0 progression resources.
 	public              int           SurveyData                  = 0;
 	public              int           SalvageParts                = 0;
@@ -1389,6 +1403,19 @@ public class GameState implements Serializable {
 		this.DebugUnlimitedFuel = g.DebugUnlimitedFuel;
 		this.DebugEncounterCheats = g.DebugEncounterCheats;
 		this.LastTravelEventIntro = g.LastTravelEventIntro == null ? "" : g.LastTravelEventIntro;
+		if (g.TravelDutyStateSaved) {
+			this.TravelRepairCrew = g.TravelRepairCrew;
+			this.TravelScannerCrew = g.TravelScannerCrew;
+			this.TravelTargetingCrew = g.TravelTargetingCrew;
+			this.TravelTransmissionsCrew = g.TravelTransmissionsCrew;
+			this.EncounterPlayerFleetSize = Math.max(1, Math.min(MAXENCOUNTERFLEETSIZE, g.EncounterPlayerFleetSize));
+			this.EncounterOpponentFleetSize = Math.max(1, Math.min(MAXENCOUNTERFLEETSIZE, g.EncounterOpponentFleetSize));
+			this.EncounterOpponentFleetFaction = g.EncounterOpponentFleetFaction;
+			this.EncounterFleetPrepared = g.EncounterFleetPrepared;
+		} else {
+			clearTravelDuties();
+			resetEncounterFleet();
+		}
 		this.SurveyData = g.SurveyData;
 		this.SalvageParts = g.SalvageParts;
 		this.AlienRelics = g.AlienRelics;
@@ -1529,6 +1556,13 @@ public class GameState implements Serializable {
 		if (SmugglerHoldLevel <= 0) SmugglerHoldLevel = 1;
 		if (ActiveContractType != CONTRACT_NONE && ActiveContractRequired <= 0) {
 			ActiveContractRequired = 1;
+		}
+		sanitizeTravelDuties();
+		if (EncounterPlayerFleetSize <= 0 || EncounterPlayerFleetSize > MAXENCOUNTERFLEETSIZE) {
+			EncounterPlayerFleetSize = getPlayerTravelFleetSize();
+		}
+		if (EncounterOpponentFleetSize <= 0 || EncounterOpponentFleetSize > MAXENCOUNTERFLEETSIZE) {
+			EncounterOpponentFleetSize = 1;
 		}
 		CustomWeaponSlots = Math.max(-ShipTypes.ShipTypes[Ship.type].weaponSlots, Math.min(GameState.MAXWEAPON, CustomWeaponSlots));
 		CustomShieldSlots = Math.max(-ShipTypes.ShipTypes[Ship.type].shieldSlots, Math.min(GameState.MAXSHIELD, CustomShieldSlots));
@@ -1799,6 +1833,258 @@ public class GameState implements Serializable {
 			}
 		}
 		return best;
+	}
+
+	public void clearTravelDuties() {
+		TravelRepairCrew = TRAVELDUTY_OFF;
+		TravelScannerCrew = TRAVELDUTY_OFF;
+		TravelTargetingCrew = TRAVELDUTY_OFF;
+		TravelTransmissionsCrew = TRAVELDUTY_OFF;
+	}
+
+	public void resetEncounterFleet() {
+		EncounterFleetPrepared = false;
+		EncounterPlayerFleetSize = getPlayerTravelFleetSize();
+		EncounterOpponentFleetSize = 1;
+		EncounterOpponentFleetFaction = -1;
+	}
+
+	public boolean travelDutiesActive() {
+		return Clicks > 0 || currentState == Main.FRAGMENTS.ENCOUNTER;
+	}
+
+	public boolean isTravelCrewAvailable(int crewIndex) {
+		if (crewIndex < 0 || crewIndex >= Mercenary.length || Ship == null || Ship.crew == null) {
+			return false;
+		}
+		for (int i = 0; i < GameState.MAXCREW; i++) {
+			if (Ship.crew[i] == crewIndex) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public int getTravelCrewShipNumber(int crewIndex) {
+		if (crewIndex < 0 || Ship == null || Ship.crew == null) {
+			return 0;
+		}
+		for (int i = 0; i < GameState.MAXCREW; i++) {
+			if (Ship.crew[i] == crewIndex) {
+				return i + 1;
+			}
+		}
+		return 0;
+	}
+
+	public int travelDutyShipNumber(int duty) {
+		return getTravelCrewShipNumber(getTravelDutyCrew(duty));
+	}
+
+	public boolean playerFleetIsTraveling() {
+		return getPlayerTravelFleetSize() > 1;
+	}
+
+	public boolean travelDutyCanAffectFlagship(int duty) {
+		if (duty != TRAVELDUTY_REPAIR || !playerFleetIsTraveling()) {
+			return true;
+		}
+		return travelDutyShipNumber(duty) <= 1;
+	}
+
+	public int escortRepairSupportBonus() {
+		if (!playerFleetIsTraveling() || TravelRepairCrew < 0 || travelDutyShipNumber(TRAVELDUTY_REPAIR) <= 1) {
+			return 0;
+		}
+		return Math.max(1, Math.min(2, travelDutySkillBonus(TRAVELDUTY_REPAIR)));
+	}
+
+	public void sanitizeTravelDuties() {
+		if (!isTravelCrewAvailable(TravelRepairCrew)) { TravelRepairCrew = TRAVELDUTY_OFF; }
+		if (!isTravelCrewAvailable(TravelScannerCrew)) { TravelScannerCrew = TRAVELDUTY_OFF; }
+		if (!isTravelCrewAvailable(TravelTargetingCrew)) { TravelTargetingCrew = TRAVELDUTY_OFF; }
+		if (!isTravelCrewAvailable(TravelTransmissionsCrew)) { TravelTransmissionsCrew = TRAVELDUTY_OFF; }
+		if (TravelRepairCrew >= 0 && TravelRepairCrew == TravelScannerCrew) { TravelScannerCrew = TRAVELDUTY_OFF; }
+		if (TravelRepairCrew >= 0 && TravelRepairCrew == TravelTargetingCrew) { TravelTargetingCrew = TRAVELDUTY_OFF; }
+		if (TravelRepairCrew >= 0 && TravelRepairCrew == TravelTransmissionsCrew) { TravelTransmissionsCrew = TRAVELDUTY_OFF; }
+		if (TravelScannerCrew >= 0 && TravelScannerCrew == TravelTargetingCrew) { TravelTargetingCrew = TRAVELDUTY_OFF; }
+		if (TravelScannerCrew >= 0 && TravelScannerCrew == TravelTransmissionsCrew) { TravelTransmissionsCrew = TRAVELDUTY_OFF; }
+		if (TravelTargetingCrew >= 0 && TravelTargetingCrew == TravelTransmissionsCrew) { TravelTransmissionsCrew = TRAVELDUTY_OFF; }
+	}
+
+	public int getTravelDutyCrew(int duty) {
+		if (duty == TRAVELDUTY_REPAIR) { return TravelRepairCrew; }
+		if (duty == TRAVELDUTY_SCANNER) { return TravelScannerCrew; }
+		if (duty == TRAVELDUTY_TARGETING) { return TravelTargetingCrew; }
+		if (duty == TRAVELDUTY_TRANSMISSIONS) { return TravelTransmissionsCrew; }
+		return TRAVELDUTY_OFF;
+	}
+
+	private void setTravelDutyCrew(int duty, int crewIndex) {
+		if (!isTravelCrewAvailable(crewIndex)) {
+			crewIndex = TRAVELDUTY_OFF;
+		}
+		if (crewIndex >= 0) {
+			if (TravelRepairCrew == crewIndex) { TravelRepairCrew = TRAVELDUTY_OFF; }
+			if (TravelScannerCrew == crewIndex) { TravelScannerCrew = TRAVELDUTY_OFF; }
+			if (TravelTargetingCrew == crewIndex) { TravelTargetingCrew = TRAVELDUTY_OFF; }
+			if (TravelTransmissionsCrew == crewIndex) { TravelTransmissionsCrew = TRAVELDUTY_OFF; }
+		}
+		if (duty == TRAVELDUTY_REPAIR) {
+			TravelRepairCrew = crewIndex;
+		} else if (duty == TRAVELDUTY_SCANNER) {
+			TravelScannerCrew = crewIndex;
+		} else if (duty == TRAVELDUTY_TARGETING) {
+			TravelTargetingCrew = crewIndex;
+		} else if (duty == TRAVELDUTY_TRANSMISSIONS) {
+			TravelTransmissionsCrew = crewIndex;
+		}
+	}
+
+	private boolean crewAssignedToOtherDuty(int duty, int crewIndex) {
+		if (crewIndex < 0) { return false; }
+		return (duty != TRAVELDUTY_REPAIR && TravelRepairCrew == crewIndex) ||
+			(duty != TRAVELDUTY_SCANNER && TravelScannerCrew == crewIndex) ||
+			(duty != TRAVELDUTY_TARGETING && TravelTargetingCrew == crewIndex) ||
+			(duty != TRAVELDUTY_TRANSMISSIONS && TravelTransmissionsCrew == crewIndex);
+	}
+
+	public int cycleTravelDuty(int duty) {
+		sanitizeTravelDuties();
+		if (Ship == null || Ship.crew == null) {
+			setTravelDutyCrew(duty, TRAVELDUTY_OFF);
+			return TRAVELDUTY_OFF;
+		}
+		int current = getTravelDutyCrew(duty);
+		int[] availableCrew = new int[GameState.MAXCREW];
+		int availableCount = 0;
+		int currentPosition = -1;
+		for (int i = 0; i < GameState.MAXCREW; i++) {
+			int crewIndex = Ship.crew[i];
+			if (!isTravelCrewAvailable(crewIndex)) {
+				continue;
+			}
+			if (crewIndex == current) {
+				currentPosition = availableCount;
+			}
+			availableCrew[availableCount] = crewIndex;
+			availableCount++;
+		}
+		if (availableCount == 0) {
+			setTravelDutyCrew(duty, TRAVELDUTY_OFF);
+			return TRAVELDUTY_OFF;
+		}
+		if (current == TRAVELDUTY_OFF) {
+			for (int i = 0; i < availableCount; i++) {
+				if (!crewAssignedToOtherDuty(duty, availableCrew[i])) {
+					setTravelDutyCrew(duty, availableCrew[i]);
+					return availableCrew[i];
+				}
+			}
+			setTravelDutyCrew(duty, availableCrew[0]);
+			return availableCrew[0];
+		}
+		if (currentPosition >= 0 && currentPosition + 1 < availableCount) {
+			setTravelDutyCrew(duty, availableCrew[currentPosition + 1]);
+			return availableCrew[currentPosition + 1];
+		}
+		setTravelDutyCrew(duty, TRAVELDUTY_OFF);
+		return TRAVELDUTY_OFF;
+	}
+
+	public int crewSkillValue(int crewIndex, int skill) {
+		if (crewIndex < 0 || crewIndex >= Mercenary.length) {
+			return 0;
+		}
+		switch (skill) {
+			case PILOTSKILL: return Mercenary[crewIndex].pilot;
+			case FIGHTERSKILL: return Mercenary[crewIndex].fighter;
+			case TRADERSKILL: return Mercenary[crewIndex].trader;
+			case ENGINEERSKILL: return Mercenary[crewIndex].engineer;
+			default: return 0;
+		}
+	}
+
+	public int travelDutyRawSkill(int duty) {
+		int crewIndex = getTravelDutyCrew(duty);
+		if (!isTravelCrewAvailable(crewIndex)) {
+			return 0;
+		}
+		if (duty == TRAVELDUTY_REPAIR) { return crewSkillValue(crewIndex, ENGINEERSKILL); }
+		if (duty == TRAVELDUTY_SCANNER) { return crewSkillValue(crewIndex, PILOTSKILL); }
+		if (duty == TRAVELDUTY_TARGETING) { return crewSkillValue(crewIndex, FIGHTERSKILL); }
+		if (duty == TRAVELDUTY_TRANSMISSIONS) { return crewSkillValue(crewIndex, TRADERSKILL); }
+		return 0;
+	}
+
+	public int travelDutySkillBonus(int duty) {
+		int skill = travelDutyRawSkill(duty);
+		if (skill <= 0) {
+			return 0;
+		}
+		return Math.max(1, Math.min(3, (skill + 2) / 4));
+	}
+
+	public int getPlayerTravelFleetSize() {
+		int ships = 1;
+		if (Ship != null && Ship.crew != null) {
+			for (int i = 1; i < GameState.MAXCREW; i++) {
+				if (isTravelCrewAvailable(Ship.crew[i])) {
+					ships++;
+				}
+			}
+		}
+		return Math.max(1, Math.min(MAXENCOUNTERFLEETSIZE, ships));
+	}
+
+	public boolean encounterCanHaveFleet() {
+		return ENCOUNTERPOLICE(EncounterType) || ENCOUNTERPIRATE(EncounterType) ||
+			ENCOUNTERTRADER(EncounterType) || ENCOUNTERFAMOUS(EncounterType);
+	}
+
+	public int inferEncounterFleetFaction() {
+		if (ENCOUNTERPOLICE(EncounterType)) { return GUILD_MERCENARIES; }
+		if (ENCOUNTERPIRATE(EncounterType)) { return GUILD_PIRATES; }
+		if (ENCOUNTERTRADER(EncounterType)) { return GUILD_TRADERS; }
+		if (ENCOUNTERFAMOUS(EncounterType)) { return GUILD_EXPLORERS; }
+		return -1;
+	}
+
+	public void prepareEncounterFleets() {
+		if (EncounterFleetPrepared) {
+			return;
+		}
+		EncounterPlayerFleetSize = getPlayerTravelFleetSize();
+		EncounterOpponentFleetSize = 1;
+		EncounterOpponentFleetFaction = inferEncounterFleetFaction();
+		if (encounterCanHaveFleet()) {
+			int chance = EncounterPlayerFleetSize > 1 ? 28 : 9;
+			if (WarpSystem >= 0 && WarpSystem < SolarSystem.length && SolarSystem[WarpSystem] != null) {
+				chance += Math.min(10, SolarSystem[WarpSystem].conflictLevel);
+			}
+			if (GetRandom(100) < chance) {
+				EncounterOpponentFleetSize = 2 + GetRandom(EncounterPlayerFleetSize > 1 ? MAXENCOUNTERFLEETSIZE - 1 : 2);
+				EncounterOpponentFleetSize = Math.max(2, Math.min(MAXENCOUNTERFLEETSIZE, EncounterOpponentFleetSize));
+				EncounterOpponentFleetFaction = GetRandom(MAXGUILD);
+			}
+		}
+		EncounterFleetPrepared = true;
+	}
+
+	public boolean encounterHasFleet() {
+		return EncounterPlayerFleetSize > 1 || EncounterOpponentFleetSize > 1;
+	}
+
+	public int encounterFleetSkillBonus(boolean player) {
+		if (currentState != Main.FRAGMENTS.ENCOUNTER || !EncounterFleetPrepared) {
+			return 0;
+		}
+		int size = player ? EncounterPlayerFleetSize : EncounterOpponentFleetSize;
+		int bonus = Math.max(0, Math.min(4, size - 1));
+		if (player) {
+			bonus += escortRepairSupportBonus();
+		}
+		return Math.max(0, Math.min(4, bonus));
 	}
 
 	public void refreshLocalHirelings() {

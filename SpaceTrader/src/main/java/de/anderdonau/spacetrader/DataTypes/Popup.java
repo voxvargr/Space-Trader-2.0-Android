@@ -180,7 +180,10 @@ public class Popup {
 		View view;
 
 		view = inflater.inflate(R.layout.view_input_dialog_text, linearLayout, false);
-		assert view != null;
+		if (view == null) {
+			context.showNextPopup();
+			return;
+		}
 
 		input = (EditText) view.findViewById(R.id.view_input_dialog_text);
 		input.setHint(hint);
@@ -226,7 +229,10 @@ public class Popup {
 		final View view;
 
 		view = inflater.inflate(R.layout.view_input_dialog, linearLayout, false);
-		assert view != null;
+		if (view == null) {
+			context.showNextPopup();
+			return;
+		}
 		button = (Button) view.findViewById(R.id.view_input_dialog_max);
 		button.setText("Max");
 		button.setOnClickListener(new View.OnClickListener() {

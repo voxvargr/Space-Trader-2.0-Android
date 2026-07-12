@@ -45,7 +45,8 @@ public class FragmentEncounter extends MyFragment {
 	private static final int   ENCOUNTER_TEXT_MIN_LINES = 4;
 
 	public Button btnAttack, btnFlee, btnSubmit, btnBribe, btnIgnore, btnYield, btnBoard, btnPlunder,
-		btnSurrender, btnDrink, btnMeet, btnTrade, btnInt, btnDebugKO, btnDebugPlunder;
+		btnSurrender, btnDrink, btnMeet, btnTrade, btnInt, btnDebugKO, btnDebugPlunder,
+		btnDutyRepair, btnDutyScanner, btnDutyTargeting, btnDutyTransmissions;
 	public ProgressBar pBarEncounter;
 	public RenderShip  EncounterPlayerShip, EncounterOpponentShip;
 	public TextView EncounterText;
@@ -60,14 +61,17 @@ public class FragmentEncounter extends MyFragment {
 		Ship Opponent = gameState.Opponent;
 		int d, i;
 
+		gameState.prepareEncounterFleets();
 		EncounterPlayerShip = (RenderShip) rootView.findViewById(R.id.EncounterPlayerShip);
 		EncounterPlayerShip.setGameState(gameState);
 		EncounterPlayerShip.setShip(Ship);
 		EncounterPlayerShip.setRotate(false);
+		EncounterPlayerShip.setFleetSize(gameState.EncounterPlayerFleetSize);
 		EncounterOpponentShip = (RenderShip) rootView.findViewById(R.id.EncounterPlayerOpponent);
 		EncounterOpponentShip.setGameState(gameState);
 		EncounterOpponentShip.setShip(Opponent);
 		EncounterOpponentShip.setRotate(true);
+		EncounterOpponentShip.setFleetSize(gameState.EncounterOpponentFleetSize);
 
 		btnAttack = (Button) rootView.findViewById(R.id.btnAttack);
 		btnFlee = (Button) rootView.findViewById(R.id.btnFlee);
@@ -84,6 +88,10 @@ public class FragmentEncounter extends MyFragment {
 		btnInt = (Button) rootView.findViewById(R.id.btnInt);
 		btnDebugKO = (Button) rootView.findViewById(R.id.btnDebugKO);
 		btnDebugPlunder = (Button) rootView.findViewById(R.id.btnDebugPlunder);
+		btnDutyRepair = (Button) rootView.findViewById(R.id.btnDutyRepair);
+		btnDutyScanner = (Button) rootView.findViewById(R.id.btnDutyScanner);
+		btnDutyTargeting = (Button) rootView.findViewById(R.id.btnDutyTargeting);
+		btnDutyTransmissions = (Button) rootView.findViewById(R.id.btnDutyTransmissions);
 		pBarEncounter = (ProgressBar) rootView.findViewById(R.id.pBarEncounter);
 		EncounterText = (TextView) rootView.findViewById(R.id.txtEncounterText);
 
@@ -102,15 +110,15 @@ public class FragmentEncounter extends MyFragment {
 			buf = String.format("At %d click%s from %s you encounter ", gameState.Clicks,
 				gameState.Clicks == 1 ? "" : "s", main.GetSystemName(main.WarpSystem.nameIndex));
 			if (gameState.ENCOUNTERPOLICE(gameState.EncounterType)) {
-				buf += "a police ";
+				buf += gameState.EncounterOpponentFleetSize > 1 ? "a police patrol fleet led by a " : "a police ";
 			} else if (gameState.ENCOUNTERPIRATE(gameState.EncounterType)) {
 				if (Opponent.type == GameState.MANTISTYPE) {
-					buf += "an alien ";
+					buf += gameState.EncounterOpponentFleetSize > 1 ? "an alien war fleet led by an alien " : "an alien ";
 				} else {
-					buf += "a pirate ";
+					buf += gameState.EncounterOpponentFleetSize > 1 ? "a pirate raiding fleet led by a pirate " : "a pirate ";
 				}
 			} else if (gameState.ENCOUNTERTRADER(gameState.EncounterType)) {
-				buf += "a trader ";
+				buf += gameState.EncounterOpponentFleetSize > 1 ? "a trade convoy led by a trader " : "a trader ";
 			} else if (gameState.ENCOUNTERMONSTER(gameState.EncounterType)) {
 				buf += "";
 			} else if (gameState.EncounterType == GameState.MARIECELESTEENCOUNTER) {
@@ -141,6 +149,18 @@ public class FragmentEncounter extends MyFragment {
 				buf += ShipTypes.ShipTypes[Opponent.type].name;
 			}
 			buf += ".\n\n";
+		}
+		if (gameState.encounterHasFleet()) {
+			buf += String.format("Formation: your side %d ship%s, contact %d ship%s",
+				gameState.EncounterPlayerFleetSize, gameState.EncounterPlayerFleetSize == 1 ? "" : "s",
+				gameState.EncounterOpponentFleetSize, gameState.EncounterOpponentFleetSize == 1 ? "" : "s");
+			if (gameState.EncounterOpponentFleetSize > 1 && gameState.EncounterOpponentFleetFaction >= 0) {
+				buf += " (" + gameState.getGuildName(gameState.EncounterOpponentFleetFaction) + ")";
+			}
+			buf += ".\n\n";
+			if (gameState.EncounterPlayerFleetSize > 1) {
+				buf += "Fleet duties are ship-local: escort captains work from their own vessels.\n\n";
+			}
 		}
 		if (gameState.LastTravelEventIntro != null && gameState.LastTravelEventIntro.length() > 0) {
 			buf = compactEncounterIntro(gameState.LastTravelEventIntro) + "\n\n" + buf;
@@ -237,6 +257,7 @@ public class FragmentEncounter extends MyFragment {
 	}
 
 	public void EncounterButtons() {
+		UpdateDutyButtons();
 		btnInt.setVisibility(View.GONE);
 		btnAttack.setVisibility(View.GONE);
 		btnFlee.setVisibility(View.GONE);
@@ -329,6 +350,34 @@ public class FragmentEncounter extends MyFragment {
 			btnOpponent.setVisibility(View.VISIBLE);
 		}
 		*/
+	}
+
+	public void UpdateDutyButtons() {
+		if (btnDutyRepair == null) {
+			return;
+		}
+		gameState.sanitizeTravelDuties();
+		btnDutyRepair.setText(dutyLabel("Repair", GameState.TRAVELDUTY_REPAIR));
+		btnDutyScanner.setText(dutyLabel("Scan", GameState.TRAVELDUTY_SCANNER));
+		btnDutyTargeting.setText(dutyLabel("Target", GameState.TRAVELDUTY_TARGETING));
+		btnDutyTransmissions.setText(dutyLabel("Comms", GameState.TRAVELDUTY_TRANSMISSIONS));
+	}
+
+	private String dutyLabel(String label, int duty) {
+		int crewIndex = gameState.getTravelDutyCrew(duty);
+		if (crewIndex < 0) {
+			return label + ": Off";
+		}
+		int shipNumber = gameState.travelDutyShipNumber(duty);
+		String shipLabel = gameState.playerFleetIsTraveling() && shipNumber > 0 ? " S" + shipNumber : "";
+		if (crewIndex == 0) {
+			return label + shipLabel + ": You";
+		}
+		if (crewIndex >= gameState.Mercenary.length) {
+			return label + ": Off";
+		}
+		int nameIndex = Math.max(0, Math.min(main.MercenaryName.length - 1, gameState.Mercenary[crewIndex].nameIndex));
+		return label + shipLabel + ": " + main.MercenaryName[nameIndex];
 	}
 
 	public void EncounterDisplayShips() {

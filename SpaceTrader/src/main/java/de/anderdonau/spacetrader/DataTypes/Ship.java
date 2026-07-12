@@ -299,6 +299,10 @@ public class Ship implements Serializable {
 		}
 
 		MaxSkill += bestGadgetTier(GameState.TARGETINGSYSTEM, GameState.TARGETINGMK2, GameState.TARGETINGMK3) == 3 ? 7 : bestGadgetTier(GameState.TARGETINGSYSTEM, GameState.TARGETINGMK2, GameState.TARGETINGMK3) == 2 ? 5 : bestGadgetTier(GameState.TARGETINGSYSTEM, GameState.TARGETINGMK2, GameState.TARGETINGMK3) == 1 ? GameState.SKILLBONUS : 0;
+		if (this == gameState.Ship && gameState.travelDutiesActive()) {
+			MaxSkill += gameState.travelDutySkillBonus(GameState.TRAVELDUTY_TARGETING);
+		}
+		MaxSkill += gameState.encounterFleetSkillBonus(this == gameState.Ship);
 
 		return gameState.AdaptDifficulty(MaxSkill);
 	}
@@ -321,6 +325,10 @@ public class Ship implements Serializable {
 
 		MaxSkill += bestGadgetTier(GameState.NAVIGATINGSYSTEM, GameState.NAVIGATIONMK2, GameState.NAVIGATIONMK3) == 3 ? 7 : bestGadgetTier(GameState.NAVIGATINGSYSTEM, GameState.NAVIGATIONMK2, GameState.NAVIGATIONMK3) == 2 ? 5 : bestGadgetTier(GameState.NAVIGATINGSYSTEM, GameState.NAVIGATIONMK2, GameState.NAVIGATIONMK3) == 1 ? GameState.SKILLBONUS : 0;
 		if (HasGadget(GameState.CLOAKINGDEVICE)) { MaxSkill += GameState.CLOAKBONUS; }
+		if (this == gameState.Ship && gameState.travelDutiesActive()) {
+			MaxSkill += gameState.travelDutySkillBonus(GameState.TRAVELDUTY_SCANNER);
+		}
+		MaxSkill += gameState.encounterFleetSkillBonus(this == gameState.Ship);
 
 		return gameState.AdaptDifficulty(MaxSkill);
 	}
@@ -343,6 +351,9 @@ public class Ship implements Serializable {
 
 		if (gameState.JarekStatus >= 2) { ++MaxSkill; }
 		if (HasGadget(GameState.TRADEUPLINK)) { MaxSkill += 3; }
+		if (this == gameState.Ship && gameState.travelDutiesActive()) {
+			MaxSkill += gameState.travelDutySkillBonus(GameState.TRAVELDUTY_TRANSMISSIONS);
+		}
 
 		return gameState.AdaptDifficulty(MaxSkill);
 	}
@@ -365,6 +376,10 @@ public class Ship implements Serializable {
 
 		MaxSkill += bestGadgetTier(GameState.AUTOREPAIRSYSTEM, GameState.AUTOREPAIRMK2, GameState.AUTOREPAIRMK3) == 3 ? 7 : bestGadgetTier(GameState.AUTOREPAIRSYSTEM, GameState.AUTOREPAIRMK2, GameState.AUTOREPAIRMK3) == 2 ? 5 : bestGadgetTier(GameState.AUTOREPAIRSYSTEM, GameState.AUTOREPAIRMK2, GameState.AUTOREPAIRMK3) == 1 ? GameState.SKILLBONUS : 0;
 		if (HasGadget(GameState.SHIELDHARMONIZER)) { MaxSkill += 2; }
+		if (this == gameState.Ship && gameState.travelDutiesActive() && gameState.travelDutyCanAffectFlagship(GameState.TRAVELDUTY_REPAIR)) {
+			MaxSkill += gameState.travelDutySkillBonus(GameState.TRAVELDUTY_REPAIR);
+		}
+		MaxSkill += gameState.encounterFleetSkillBonus(this == gameState.Ship);
 
 		return gameState.AdaptDifficulty(MaxSkill);
 	}

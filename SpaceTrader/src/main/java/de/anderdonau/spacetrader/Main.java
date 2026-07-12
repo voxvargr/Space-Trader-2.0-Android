@@ -34,6 +34,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.v4.widget.DrawerLayout;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -74,6 +75,8 @@ import de.anderdonau.spacetrader.DataTypes.Tradeitems;
 import de.anderdonau.spacetrader.DataTypes.Weapons;
 
 public class Main extends Activity implements NavigationDrawerFragment.NavigationDrawerCallbacks, Serializable {
+	private static final String TAG = "SpaceTrader";
+
 	public enum FRAGMENTS {
 		AVERAGE_PRICES,
 		BANK,
@@ -381,7 +384,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 
 	@Override
 	public void onNavigationDrawerItemSelected(int position) {
-		if (gameState.currentState == FRAGMENTS.ENCOUNTER || gameState.currentState == FRAGMENTS.NEW_GAME || gameState == null) {
+		if (gameState == null || gameState.currentState == FRAGMENTS.ENCOUNTER || gameState.currentState == FRAGMENTS.NEW_GAME) {
 			return;
 		}
 		switch (position) {
@@ -426,7 +429,9 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 
 	public void restoreActionBar() {
 		ActionBar actionBar = getActionBar();
-		assert actionBar != null;
+		if (actionBar == null) {
+			return;
+		}
 		actionBar.setDisplayShowTitleEnabled(true);
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
 		actionBar.setTitle(getString(R.string.app_name));
@@ -450,7 +455,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		if (mNavigationDrawerFragment != null) {
 			if (!mNavigationDrawerFragment.isDrawerOpen()) {
 				MenuInflater inflater = getMenuInflater();
-				if (gameState.currentState == FRAGMENTS.NEW_GAME || gameState.currentState == FRAGMENTS.ENCOUNTER) {
+				if (gameState == null || gameState.currentState == FRAGMENTS.NEW_GAME || gameState.currentState == FRAGMENTS.ENCOUNTER) {
 					inflater.inflate(R.menu.help_menu, menu);
 				} else {
 					inflater.inflate(R.menu.in_game, menu);
@@ -471,7 +476,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		String call = "";
 		Popup popup;
 		DrawerLayout drawer_layout = (DrawerLayout) findViewById(R.id.drawer_layout);
-		if (id != R.id.submenuGame && id != R.id.submenuHelp) {
+		if (drawer_layout != null && id != R.id.submenuGame && id != R.id.submenuHelp) {
 			drawer_layout.closeDrawers();
 		}
 		switch (id) {
@@ -985,7 +990,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			showFirstStepsHelp();
 			SharedPreferences.Editor ed = sp.edit();
 			ed.putBoolean("firstTime", false);
-			ed.commit();
+			ed.apply();
 		}
 	}
 
@@ -2474,12 +2479,30 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 	}
 
 	public int NextSystemWithinRange(SolarSystem Current, boolean Back) {
+		if (gameState == null || gameState.SolarSystem == null || gameState.Ship == null || Current == null) {
+			return -1;
+		}
+		int systemCount = Math.min(GameState.MAXSOLARSYSTEM, gameState.SolarSystem.length);
 		int i;
-		//noinspection StatementWithEmptyBody
-		for (i = 0; gameState.SolarSystem[i] != Current; i++) {
+		for (i = 0; i < systemCount; i++) {
+			if (gameState.SolarSystem[i] == Current) {
+				break;
+			}
+		}
+		if (i >= systemCount) {
+			return -1;
+		}
+		if (gameState.Mercenary == null || gameState.Mercenary.length == 0) {
+			return -1;
 		}
 		CrewMember COMMANDER = gameState.Mercenary[0];
+		if (COMMANDER == null || COMMANDER.curSystem < 0 || COMMANDER.curSystem >= systemCount) {
+			return -1;
+		}
 		SolarSystem CURSYSTEM = gameState.SolarSystem[COMMANDER.curSystem];
+		if (CURSYSTEM == null) {
+			return -1;
+		}
 
 		if (Back) {
 			--i;
@@ -2489,8 +2512,8 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 
 		while (true) {
 			if (i < 0) {
-				i = GameState.MAXSOLARSYSTEM - 1;
-			} else if (i >= GameState.MAXSOLARSYSTEM) {
+				i = systemCount - 1;
+			} else if (i >= systemCount) {
 				i = 0;
 			}
 			if (gameState.SolarSystem[i] == Current) {
@@ -2499,8 +2522,18 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 
 			if (gameState.WormholeExists(COMMANDER.curSystem, i)) {
 				return i;
-			} else if (gameState.RealDistance(CURSYSTEM, gameState.SolarSystem[i]) <= gameState.Ship
-				.GetFuel() && gameState.RealDistance(CURSYSTEM, gameState.SolarSystem[i]) > 0) {
+			}
+			SolarSystem candidate = gameState.SolarSystem[i];
+			if (candidate == null) {
+				if (Back) {
+					--i;
+				} else {
+					++i;
+				}
+				continue;
+			}
+			int distance = gameState.RealDistance(CURSYSTEM, candidate);
+			if (distance <= gameState.Ship.GetFuel() && distance > 0) {
 				return i;
 			}
 
@@ -2603,7 +2636,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 				int mPendingIntentId = Math.abs(gameState.rand.nextInt());
 				//noinspection ConstantConditions
 				PendingIntent mPendingIntent = PendingIntent.getActivity(getApplicationContext(),
-					mPendingIntentId, mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT);
+					mPendingIntentId, mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 				AlarmManager mgr = (AlarmManager) getApplicationContext().getSystemService(
 					Context.ALARM_SERVICE);
 				mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent);
@@ -4580,6 +4613,33 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		((FragmentEncounter) currentFragment).pBarEncounter.setVisibility(View.INVISIBLE);
 	}
 
+	private void cycleEncounterDuty(int duty) {
+		gameState.cycleTravelDuty(duty);
+		if (currentFragment instanceof FragmentEncounter) {
+			((FragmentEncounter) currentFragment).UpdateDutyButtons();
+		}
+	}
+
+	@SuppressWarnings("UnusedParameters")
+	public void EncounterButtonDutyRepairCallback(View view) {
+		cycleEncounterDuty(GameState.TRAVELDUTY_REPAIR);
+	}
+
+	@SuppressWarnings("UnusedParameters")
+	public void EncounterButtonDutyScannerCallback(View view) {
+		cycleEncounterDuty(GameState.TRAVELDUTY_SCANNER);
+	}
+
+	@SuppressWarnings("UnusedParameters")
+	public void EncounterButtonDutyTargetingCallback(View view) {
+		cycleEncounterDuty(GameState.TRAVELDUTY_TARGETING);
+	}
+
+	@SuppressWarnings("UnusedParameters")
+	public void EncounterButtonDutyTransmissionsCallback(View view) {
+		cycleEncounterDuty(GameState.TRAVELDUTY_TRANSMISSIONS);
+	}
+
 	@SuppressWarnings("UnusedParameters")
 	public void EncounterButtonTribbleCallback(View view) {
 		Toast.makeText(this, "Squeek! Squeek!", Toast.LENGTH_SHORT).show();
@@ -5070,6 +5130,8 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		Mantis = false;
 		HaveMilitaryLaser = gameState.Ship.HasWeapon(GameState.MILITARYLASERWEAPON, true);
 		HaveReflectiveShield = gameState.Ship.HasShield(GameState.REFLECTIVESHIELD) > 0;
+		gameState.sanitizeTravelDuties();
+		gameState.resetEncounterFleet();
 
 		// if timespace is ripped, we may switch the warp system here.
 		if (gameState.PossibleToGoThroughRip && gameState.ExperimentStatus == 12 && gameState.FabricRipProbability > 0 &&
@@ -5092,8 +5154,16 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		--gameState.Clicks;
 
 		while (gameState.Clicks > 0) {
+			Pirate = false;
+			Trader = false;
+			Police = false;
+			Mantis = false;
+
 			// Engineer may do some repairs
 			Repairs = gameState.GetRandom(Ship.EngineerSkill()) >> 1;
+			if (gameState.TravelRepairCrew >= 0 && gameState.travelDutyCanAffectFlagship(GameState.TRAVELDUTY_REPAIR) && Ship.hull < Ship.GetHullStrength()) {
+				Repairs += Math.max(1, gameState.travelDutyRawSkill(GameState.TRAVELDUTY_REPAIR) / 4);
+			}
 			Ship.hull += Repairs;
 			if (Ship.hull > gameState.Ship.GetHullStrength()) {
 				Repairs = Ship.hull - gameState.Ship.GetHullStrength();
@@ -5186,6 +5256,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			} else {
 				// Check if it is time for an encounter
 				EncounterTest = gameState.GetRandom(44 - (2 * GameState.getDifficulty()));
+				EncounterTest += gameState.travelDutySkillBonus(GameState.TRAVELDUTY_SCANNER) * 2;
 
 				// encounters are half as likely if you're in a flea.
 				if (Ship.type == 0) {
@@ -5203,7 +5274,8 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 					Police = true;
 				} else if (EncounterTest < Politics.mPolitics[WarpSystem.politics].strengthPirates +
 					gameState.STRENGTHPOLICE(WarpSystem) +
-					Politics.mPolitics[WarpSystem.politics].strengthTraders) {
+					Politics.mPolitics[WarpSystem.politics].strengthTraders +
+					gameState.travelDutySkillBonus(GameState.TRAVELDUTY_TRANSMISSIONS) * 2) {
 					Trader = true;
 				} else if (gameState.WildStatus == 1 && WarpSystem == gameState.SolarSystem[GameState.KRAVATSYSTEM]) {
 					// if you're coming in to Kravat & you have Wild onboard, there'll be swarms o' cops.
@@ -5217,6 +5289,10 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 					}
 				}
 				if (!(Trader || Police || Pirate)) {
+					if (gameState.TravelTransmissionsCrew >= 0 &&
+						gameState.GetRandom(100) < Math.min(25, 3 + gameState.travelDutyRawSkill(GameState.TRAVELDUTY_TRANSMISSIONS) * 2)) {
+						Trader = true;
+					}
 					if (gameState.ArtifactOnBoard && gameState.GetRandom(20) <= 3) {
 						Mantis = true;
 					}
@@ -5361,7 +5437,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 
 				// Will there be trade in orbit?
 				if (gameState.EncounterType == GameState.TRADERIGNORE && (gameState.GetRandom(
-					1000) < gameState.ChanceOfTradeInOrbit)) {
+					1000) < gameState.ChanceOfTradeInOrbit + gameState.travelDutyRawSkill(GameState.TRAVELDUTY_TRANSMISSIONS) * 12)) {
 					if (gameState.Ship.FilledCargoBays() < gameState.Ship
 						.TotalCargoBays() && gameState.Opponent.HasTradeableItems(gameState.WarpSystem,
 						GameState.TRADERSELL)) {
@@ -6748,6 +6824,9 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 	}
 
 	private boolean writeSaveObjectToFile(File f, SaveGame_v120 sv120) {
+		if (f == null || sv120 == null) {
+			return false;
+		}
 		File tmp = getSaveTempFile(f);
 		File backup = getSaveBackupFile(f);
 		try {
@@ -6759,12 +6838,12 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 
 			//noinspection ResultOfMethodCallIgnored
 			tmp.delete();
-			FileOutputStream fos = new FileOutputStream(tmp);
-			ObjectOutputStream oos = new ObjectOutputStream(fos);
-			oos.writeObject(sv120);
-			oos.flush();
-			fos.getFD().sync();
-			oos.close();
+			try (FileOutputStream fos = new FileOutputStream(tmp);
+				 ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+				oos.writeObject(sv120);
+				oos.flush();
+				fos.getFD().sync();
+			}
 
 			//noinspection ResultOfMethodCallIgnored
 			backup.delete();
@@ -6788,12 +6867,15 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			tmp.delete();
 			//noinspection ResultOfMethodCallIgnored
 			backup.renameTo(f);
-			e.printStackTrace();
+			Log.w(TAG, "Failed to write save file " + f, e);
 			return false;
 		}
 	}
 
 	private boolean readSaveObjectFromFile(File f) {
+		if (f == null) {
+			return false;
+		}
 		if (readSaveObjectFromFileOnly(f)) {
 			return true;
 		}
@@ -6806,11 +6888,11 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 				return false;
 			}
 
-			FileInputStream fis = new FileInputStream(f);
-			ObjectInputStream ois = new ObjectInputStream(fis);
-			Object saveObject = ois.readObject();
-			ois.close();
-			fis.close();
+			Object saveObject;
+			try (FileInputStream fis = new FileInputStream(f);
+				 ObjectInputStream ois = new ObjectInputStream(fis)) {
+				saveObject = ois.readObject();
+			}
 			if (saveObject instanceof SaveGame_v120) {
 				gameState = new GameState((SaveGame_v120) saveObject);
 			} else if (saveObject instanceof SaveGame_v111) {
@@ -6826,7 +6908,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			GameState.isValid = true;
 			return true;
 		} catch (Exception e) {
-			e.printStackTrace();
+			Log.w(TAG, "Failed to read save file " + f, e);
 			return false;
 		}
 	}
@@ -6926,7 +7008,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		ed.putBoolean("SaveOnArrival", gameState.SaveOnArrival);
 		ed.putBoolean("DebugEnabled", gameState.DebugEnabled);
 
-		ed.commit();
+		ed.apply();
 	}
 
 	public void saveGame() {

@@ -9,6 +9,7 @@
 
 package de.anderdonau.spacetrader;
 
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -72,7 +73,7 @@ public class FragmentSellEquipment extends MyFragment {
 		TextView header = new TextView(getActivity());
 		header.setText(text);
 		header.setTextSize(18);
-		header.setTypeface(null, 1);
+		header.setTypeface(null, Typeface.BOLD);
 		header.setPadding(4, 14, 4, 6);
 		row.addView(header, new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.WRAP_CONTENT));
 		table.addView(row);

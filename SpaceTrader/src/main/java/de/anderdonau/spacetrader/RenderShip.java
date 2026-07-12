@@ -25,7 +25,6 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.Region;
 import android.util.AttributeSet;
 import android.view.View;
 
@@ -46,6 +45,7 @@ public class RenderShip extends View {
 	Bitmap bitmap_damaged;
 	Rect src = new Rect();
 	Rect dst = new Rect();
+	private int fleetSize = 1;
 
 	public RenderShip(Context context) {
 		super(context);
@@ -78,6 +78,11 @@ public class RenderShip extends View {
 		}
 	}
 
+	public void setFleetSize(int fleetSize) {
+		this.fleetSize = Math.max(1, Math.min(GameState.MAXENCOUNTERFLEETSIZE, fleetSize));
+		invalidate();
+	}
+
 	public void setShip(Ship ship) {
 		this.mShip = ship;
 		this.rotate = false;
@@ -91,6 +96,110 @@ public class RenderShip extends View {
 			                                              mShip.getType().drawable_damaged
 			);
 			bitmap_shield = BitmapFactory.decodeResource(getResources(), mShip.getType().drawable_shield);
+		}
+	}
+
+	private int clampPercent(int value) {
+		return Math.max(0, Math.min(100, value));
+	}
+
+	private float bitmapScale(Bitmap image, int width, int height) {
+		if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0 || width <= 0 || height <= 0) {
+			return 1.0f;
+		}
+		return Math.min(1.0f, Math.min(width / (float) image.getWidth(), height / (float) image.getHeight()));
+	}
+
+	private void setCenteredDst(Bitmap image, int left, int top, int width, int height) {
+		float scale = bitmapScale(image, width, height);
+		int drawWidth = Math.max(1, Math.round(image.getWidth() * scale));
+		int drawHeight = Math.max(1, Math.round(image.getHeight() * scale));
+		dst.left = left + width / 2 - drawWidth / 2;
+		dst.top = top + height / 2 - drawHeight / 2;
+		dst.right = dst.left + drawWidth;
+		dst.bottom = dst.top + drawHeight;
+	}
+
+	private void drawShipArt(Canvas canvas, int dmgPercent, int shieldPercent, int left, int top, int width, int height) {
+		dmgPercent = clampPercent(dmgPercent);
+		shieldPercent = clampPercent(shieldPercent);
+
+		if (shieldPercent > 0) {
+			src.top = 0;
+			src.bottom = bitmap_shield.getHeight();
+			src.left = 0;
+			src.right = bitmap_shield.getWidth();
+			setCenteredDst(bitmap_shield, left, top, width, height);
+			if (this.rotate) {
+				int visibleWidth = (int) Math.floor((dst.right - dst.left) * shieldPercent / 100.0);
+				canvas.save();
+				canvas.clipRect(dst.right - visibleWidth, dst.top, dst.right, dst.bottom);
+				canvas.drawBitmap(bitmap_shield, src, dst, paint);
+				canvas.restore();
+			} else {
+				int fullSrcRight = src.right;
+				int fullDstRight = dst.right;
+				src.right = bitmap_shield.getWidth() * shieldPercent / 100;
+				dst.right = dst.left + (fullDstRight - dst.left) * shieldPercent / 100;
+				canvas.drawBitmap(bitmap_shield, src, dst, paint);
+				src.right = fullSrcRight;
+				dst.right = fullDstRight;
+			}
+		}
+
+		src.top = 0;
+		src.bottom = bitmap_damaged.getHeight();
+		src.left = 0;
+		src.right = bitmap_damaged.getWidth();
+		setCenteredDst(bitmap_damaged, left, top, width, height);
+		canvas.drawBitmap(bitmap_damaged, src, dst, paint);
+
+		src.top = 0;
+		src.bottom = bitmap.getHeight();
+		src.left = 0;
+		src.right = bitmap.getWidth();
+		setCenteredDst(bitmap, left, top, width, height);
+		if (this.rotate) {
+			int visibleWidth = (int) Math.floor((dst.right - dst.left) * dmgPercent / 100.0);
+			canvas.save();
+			canvas.clipRect(dst.right - visibleWidth, dst.top, dst.right, dst.bottom);
+			canvas.drawBitmap(bitmap, src, dst, paint);
+			canvas.restore();
+		} else {
+			int fullSrcRight = src.right;
+			int fullDstRight = dst.right;
+			src.right = bitmap.getWidth() * dmgPercent / 100;
+			dst.right = dst.left + (fullDstRight - dst.left) * dmgPercent / 100;
+			canvas.drawBitmap(bitmap, src, dst, paint);
+			src.right = fullSrcRight;
+			dst.right = fullDstRight;
+		}
+	}
+
+	private void drawFormation(Canvas canvas, int dmgPercent, int shieldPercent) {
+		int count = Math.max(1, Math.min(GameState.MAXENCOUNTERFLEETSIZE, fleetSize));
+		if (count <= 1) {
+			drawShipArt(canvas, dmgPercent, shieldPercent, 0, 0, getWidth(), getHeight());
+			return;
+		}
+
+		float[] xs = new float[]{0.34f, 0.57f, 0.43f, 0.68f, 0.25f};
+		float[] ys = new float[]{0.36f, 0.58f, 0.72f, 0.30f, 0.66f};
+		if (count == 2) {
+			xs = new float[]{0.38f, 0.60f};
+			ys = new float[]{0.40f, 0.62f};
+		} else if (count == 3) {
+			xs = new float[]{0.35f, 0.61f, 0.47f};
+			ys = new float[]{0.42f, 0.39f, 0.70f};
+		}
+		int cell = Math.max(1, Math.round(Math.min(getWidth(), getHeight()) * (count >= 4 ? 0.46f : count == 3 ? 0.52f : 0.58f)));
+		for (int i = 0; i < count; i++) {
+			float x = this.rotate ? 1.0f - xs[i] : xs[i];
+			int left = Math.round(getWidth() * x) - cell / 2;
+			int top = Math.round(getHeight() * ys[i]) - cell / 2;
+			left = Math.max(0, Math.min(getWidth() - cell, left));
+			top = Math.max(0, Math.min(getHeight() - cell, top));
+			drawShipArt(canvas, dmgPercent, shieldPercent, left, top, cell, cell);
 		}
 	}
 
@@ -127,76 +236,7 @@ public class RenderShip extends View {
 			dmgPercent = (mShip.hull * 100) / mShip.GetHullStrength();
 		}
 
-		if (shieldPercent > 0) {
-			if (this.rotate) {
-				int width;
-				width = (int) Math.floor(bitmap_shield.getWidth() * shieldPercent / 100.0);
-				src.top = 0;
-				src.bottom = bitmap_shield.getHeight();
-				src.left = 0;
-				src.right = bitmap_shield.getWidth();
-
-				dst.top = getHeight() / 2 - bitmap_shield.getHeight() / 2;
-				dst.bottom = dst.top + (src.bottom - src.top);
-				dst.left = getWidth() / 2 - bitmap_shield.getWidth() / 2;
-				dst.right = dst.left + (src.right - src.left);
-
-				canvas.clipRect(dst.right - width, 0, getWidth(), getHeight(), Region.Op.REPLACE);
-				canvas.drawBitmap(bitmap_shield, src, dst, paint);
-				canvas.clipRect(0, 0, getWidth(), getHeight(), Region.Op.REPLACE);
-			} else {
-				src.top = 0;
-				src.bottom = bitmap_shield.getHeight();
-				src.left = 0;
-				src.right = bitmap_shield.getWidth() * shieldPercent / 100;
-
-				dst.top = getHeight() / 2 - bitmap_shield.getHeight() / 2;
-				dst.bottom = dst.top + (src.bottom - src.top);
-				dst.left = getWidth() / 2 - bitmap_shield.getWidth() / 2;
-				dst.right = dst.left + (src.right - src.left);
-				canvas.drawBitmap(bitmap_shield, src, dst, paint);
-			}
-		}
-
-		src.top = 0;
-		src.bottom = bitmap_damaged.getHeight();
-		src.left = 0;
-		src.right = bitmap_damaged.getWidth();
-
-		dst.top = getHeight() / 2 - bitmap_damaged.getHeight() / 2;
-		dst.bottom = dst.top + (src.bottom - src.top);
-		dst.left = getWidth() / 2 - bitmap_damaged.getWidth() / 2;
-		dst.right = dst.left + (src.right - src.left);
-		canvas.drawBitmap(bitmap_damaged, src, dst, paint);
-
-		if (this.rotate) {
-			int width;
-			width = (int) Math.floor(bitmap.getWidth() * dmgPercent / 100.0);
-			src.top = 0;
-			src.bottom = bitmap.getHeight();
-			src.left = 0;
-			src.right = bitmap.getWidth();
-
-			dst.top = getHeight() / 2 - bitmap.getHeight() / 2;
-			dst.bottom = dst.top + (src.bottom - src.top);
-			dst.left = getWidth() / 2 - bitmap.getWidth() / 2;
-			dst.right = dst.left + (src.right - src.left);
-
-			canvas.clipRect(dst.right - width, 0, getWidth(), getHeight(), Region.Op.REPLACE);
-			canvas.drawBitmap(bitmap, src, dst, paint);
-			canvas.clipRect(0, 0, getWidth(), getHeight(), Region.Op.REPLACE);
-		} else {
-			src.top = 0;
-			src.bottom = bitmap.getHeight();
-			src.left = 0;
-			src.right = bitmap.getWidth() * dmgPercent / 100;
-
-			dst.top = getHeight() / 2 - bitmap.getHeight() / 2;
-			dst.bottom = dst.top + (src.bottom - src.top);
-			dst.left = getWidth() / 2 - bitmap.getWidth() / 2;
-			dst.right = dst.left + (src.right - src.left);
-			canvas.drawBitmap(bitmap, src, dst, paint);
-		}
+		drawFormation(canvas, dmgPercent, shieldPercent);
 	}
 
 	@Override

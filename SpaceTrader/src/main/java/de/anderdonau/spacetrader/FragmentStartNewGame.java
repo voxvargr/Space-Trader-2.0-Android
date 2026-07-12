@@ -67,7 +67,7 @@ public class FragmentStartNewGame extends MyFragment {
 		s = (SeekBar) findViewById(R.id.skillEngineer);
 		gameState.Mercenary[0].engineer = s.getProgress() + 1;
 		ed.putInt("Engineer", s.getProgress());
-		ed.commit();
+		ed.apply();
 		return gameState;
 	}
 

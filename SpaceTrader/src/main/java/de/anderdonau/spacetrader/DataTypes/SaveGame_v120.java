@@ -103,6 +103,10 @@ public class SaveGame_v120 implements Serializable {
 	public int     CombatTacticsLevel;
 	public int     SmugglerHoldLevel;
 	public int     LocalActionClock;
+	public int     PendingLocalActionType;
+	public int     PendingLocalActionSystem;
+	public int     PendingLocalActionBody;
+	public int     PendingLocalActionTicks;
 	public int     CustomWeaponSlots;
 	public int     CustomShieldSlots;
 	public int     CustomGadgetSlots;
@@ -251,6 +255,10 @@ public class SaveGame_v120 implements Serializable {
 		this.CombatTacticsLevel = g.CombatTacticsLevel;
 		this.SmugglerHoldLevel = g.SmugglerHoldLevel;
 		this.LocalActionClock = g.LocalActionClock;
+		this.PendingLocalActionType = g.PendingLocalActionType;
+		this.PendingLocalActionSystem = g.PendingLocalActionSystem;
+		this.PendingLocalActionBody = g.PendingLocalActionBody;
+		this.PendingLocalActionTicks = g.PendingLocalActionTicks;
 		this.CustomWeaponSlots = g.CustomWeaponSlots;
 		this.CustomShieldSlots = g.CustomShieldSlots;
 		this.CustomGadgetSlots = g.CustomGadgetSlots;

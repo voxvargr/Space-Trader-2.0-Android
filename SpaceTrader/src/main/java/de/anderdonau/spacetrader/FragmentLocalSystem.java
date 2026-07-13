@@ -127,13 +127,13 @@ public class FragmentLocalSystem extends MyFragment {
 			bodyButtons.addView(button("Explore", new View.OnClickListener() {
 				@Override
 				public void onClick(View view) {
-					exploreBody(system, body, bodyIndex);
+					main.beginLocalActionTravel(GameState.LOCAL_ACTION_EXPLORE, gameState.Mercenary[0].curSystem, bodyIndex);
 				}
 			}));
 			bodyButtons.addView(button("Mine/Salvage", new View.OnClickListener() {
 				@Override
 				public void onClick(View view) {
-					mineOrSalvage(system, body, bodyIndex);
+					main.beginLocalActionTravel(GameState.LOCAL_ACTION_MINE_SALVAGE, gameState.Mercenary[0].curSystem, bodyIndex);
 				}
 			}));
 			container.addView(bodyButtons);

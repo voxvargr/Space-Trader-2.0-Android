@@ -85,6 +85,9 @@ public class GameState implements Serializable {
 	public static final int           TRAVELDUTY_SCANNER          = 1;
 	public static final int           TRAVELDUTY_TARGETING        = 2;
 	public static final int           TRAVELDUTY_TRANSMISSIONS    = 3;
+	public static final int           LOCAL_ACTION_NONE           = 0;
+	public static final int           LOCAL_ACTION_EXPLORE        = 1;
+	public static final int           LOCAL_ACTION_MINE_SALVAGE   = 2;
 	public static final int           MAXENCOUNTERFLEETSIZE       = 5;
 	public static final int           SKILLBONUS                  = 3;
 	public static final int           CLOAKBONUS                  = 2;
@@ -602,6 +605,10 @@ public class GameState implements Serializable {
 	public              int           CombatTacticsLevel          = 1;
 	public              int           SmugglerHoldLevel           = 1;
 	public              int           LocalActionClock            = 0;
+	public              int           PendingLocalActionType      = LOCAL_ACTION_NONE;
+	public              int           PendingLocalActionSystem    = -1;
+	public              int           PendingLocalActionBody      = -1;
+	public              int           PendingLocalActionTicks     = 0;
 	public              int           CustomWeaponSlots           = 0;
 	public              int           CustomShieldSlots           = 0;
 	public              int           CustomGadgetSlots           = 0;
@@ -1438,6 +1445,10 @@ public class GameState implements Serializable {
 		this.CombatTacticsLevel = savedModuleLevel(g.CombatTacticsLevel);
 		this.SmugglerHoldLevel = savedModuleLevel(g.SmugglerHoldLevel);
 		this.LocalActionClock = g.LocalActionClock;
+		this.PendingLocalActionType = g.PendingLocalActionType;
+		this.PendingLocalActionSystem = g.PendingLocalActionSystem;
+		this.PendingLocalActionBody = g.PendingLocalActionBody;
+		this.PendingLocalActionTicks = g.PendingLocalActionTicks;
 		this.CustomWeaponSlots = g.CustomWeaponSlots;
 		this.CustomShieldSlots = g.CustomShieldSlots;
 		this.CustomGadgetSlots = g.CustomGadgetSlots;
@@ -1519,6 +1530,7 @@ public class GameState implements Serializable {
 		CombatTacticsLevel = 1;
 		SmugglerHoldLevel = 1;
 		LocalActionClock = 0;
+		clearPendingLocalAction();
 		CustomWeaponSlots = 0;
 		CustomShieldSlots = 0;
 		CustomGadgetSlots = 0;
@@ -1597,7 +1609,28 @@ public class GameState implements Serializable {
 				generateExpansionForSystem(idx);
 			}
 		}
+		if (!hasPendingLocalAction()) {
+			clearPendingLocalAction();
+		}
 		ExpansionStateVerified = true;
+	}
+
+	public void clearPendingLocalAction() {
+		PendingLocalActionType = LOCAL_ACTION_NONE;
+		PendingLocalActionSystem = -1;
+		PendingLocalActionBody = -1;
+		PendingLocalActionTicks = 0;
+	}
+
+	public boolean hasPendingLocalAction() {
+		if (PendingLocalActionType != LOCAL_ACTION_EXPLORE && PendingLocalActionType != LOCAL_ACTION_MINE_SALVAGE) {
+			return false;
+		}
+		if (PendingLocalActionSystem < 0 || PendingLocalActionSystem >= MAXSOLARSYSTEM || SolarSystem == null) {
+			return false;
+		}
+		SolarSystem system = SolarSystem[PendingLocalActionSystem];
+		return system != null && system.bodies != null && PendingLocalActionBody >= 0 && PendingLocalActionBody < system.bodies.length;
 	}
 
 	public void generateExpansionForSystem(int idx) {

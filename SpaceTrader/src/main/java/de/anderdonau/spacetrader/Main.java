@@ -29,17 +29,22 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowInsets;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -88,6 +93,9 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		ENCOUNTER,
 		GALACTIC_CHART,
 		LOCAL_SYSTEM,
+		LOCAL_TRAVEL,
+		FLEET_MANAGEMENT,
+		MISSIONS,
 		DEBUG_MENU,
 		NEW_GAME,
 		OPTIONS,
@@ -287,6 +295,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		}
 
 		setContentView(R.layout.activity_welcome_screen);
+		applySystemBarSafeAreas();
 		FragmentManager fragmentManager = getFragmentManager();
 
 		// Set up the drawer.
@@ -305,6 +314,60 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			gameState = new GameState(this, "Jameson");
 			changeFragment(FRAGMENTS.NEW_GAME);
 		}
+	}
+
+	private void applySystemBarSafeAreas() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+			Window window = getWindow();
+			window.setStatusBarColor(Color.BLACK);
+			window.setNavigationBarColor(Color.BLACK);
+		}
+		applySafeAreaPadding(findViewById(R.id.background), true);
+		applySafeAreaPadding(findViewById(R.id.navigation_drawer), true);
+	}
+
+	private void applySafeAreaPadding(final View view, final boolean includeActionBar) {
+		if (view == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT_WATCH) {
+			return;
+		}
+		final int baseLeft = view.getPaddingLeft();
+		final int baseTop = view.getPaddingTop();
+		final int baseRight = view.getPaddingRight();
+		final int baseBottom = view.getPaddingBottom();
+		view.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+			@Override
+			public WindowInsets onApplyWindowInsets(final View v, final WindowInsets insets) {
+				v.post(new Runnable() {
+					@Override
+					public void run() {
+						int[] location = new int[2];
+						v.getLocationOnScreen(location);
+						int screenHeight = getResources().getDisplayMetrics().heightPixels;
+						int topSafe = insets.getSystemWindowInsetTop() + (includeActionBar ? getActionBarSafeHeight() : 0);
+						int bottomSafe = insets.getSystemWindowInsetBottom();
+						int topGap = Math.max(0, location[1]);
+						int bottomGap = Math.max(0, screenHeight - (location[1] + v.getHeight()));
+						int addTop = Math.max(0, topSafe - topGap);
+						int addBottom = Math.max(0, bottomSafe - bottomGap);
+						v.setPadding(baseLeft, baseTop + addTop, baseRight, baseBottom + addBottom);
+					}
+				});
+				return insets;
+			}
+		});
+		view.requestApplyInsets();
+	}
+
+	private int getActionBarSafeHeight() {
+		ActionBar actionBar = getActionBar();
+		if (actionBar != null && actionBar.getHeight() > 0) {
+			return actionBar.getHeight();
+		}
+		TypedValue value = new TypedValue();
+		if (getTheme().resolveAttribute(android.R.attr.actionBarSize, value, true)) {
+			return TypedValue.complexToDimensionPixelSize(value.data, getResources().getDisplayMetrics());
+		}
+		return 0;
 	}
 
 	@Override
@@ -364,6 +427,8 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			case GALACTIC_CHART:
 			case OPTIONS:
 			case PERSONNEL_ROSTER:
+			case FLEET_MANAGEMENT:
+			case MISSIONS:
 			case SELL_CARGO:
 			case SELL_EQUIPMENT:
 			case SHIPYARD:
@@ -379,6 +444,10 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			case DEBUG_MENU:
 				changeFragment(FRAGMENTS.SYSTEM_INFORMATION);
 				break;
+			case LOCAL_TRAVEL:
+				gameState.clearPendingLocalAction();
+				changeFragment(FRAGMENTS.LOCAL_SYSTEM);
+				break;
 		}
 	}
 
@@ -388,41 +457,58 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			return;
 		}
 		switch (position) {
-			case 0: //"Buy Cargo"
+			case NavigationDrawerFragment.NAV_BUY_CARGO:
 				changeFragment(FRAGMENTS.BUY_CARGO);
 				break;
-			case 1: //"Sell Cargo"
+			case NavigationDrawerFragment.NAV_SELL_CARGO:
 				changeFragment(FRAGMENTS.SELL_CARGO);
 				break;
-			case 2: // "Shipyard"
+			case NavigationDrawerFragment.NAV_SHIPYARD:
 				changeFragment(FRAGMENTS.SHIPYARD);
 				break;
-			case 3: // "Buy Equipment"
+			case NavigationDrawerFragment.NAV_BUY_EQUIPMENT:
 				changeFragment(FRAGMENTS.BUY_EQUIPMENT);
 				break;
-			case 4: // "Sell Equipment"
+			case NavigationDrawerFragment.NAV_SELL_EQUIPMENT:
 				changeFragment(FRAGMENTS.SELL_EQUIPMENT);
 				break;
-			case 5: // "Personnel Roster"
+			case NavigationDrawerFragment.NAV_PERSONNEL_ROSTER:
 				changeFragment(FRAGMENTS.PERSONNEL_ROSTER);
 				break;
-			case 6: // "Bank"
+			case NavigationDrawerFragment.NAV_FLEET_MANAGEMENT:
+				changeFragment(FRAGMENTS.FLEET_MANAGEMENT);
+				break;
+			case NavigationDrawerFragment.NAV_BANK:
 				changeFragment(FRAGMENTS.BANK);
 				break;
-			case 7: // "System Information"
+			case NavigationDrawerFragment.NAV_SYSTEM_INFORMATION:
 				changeFragment(FRAGMENTS.SYSTEM_INFORMATION);
 				break;
-			case 8: // "Commander Status"
+			case NavigationDrawerFragment.NAV_COMMANDER_STATUS:
 				changeFragment(FRAGMENTS.COMMANDER_STATUS);
 				break;
-			case 9: // "Galactic Chart"
+			case NavigationDrawerFragment.NAV_GALACTIC_CHART:
 				changeFragment(FRAGMENTS.GALACTIC_CHART);
 				break;
-			case 10: // "Short Range Chart"
+			case NavigationDrawerFragment.NAV_SHORT_RANGE_CHART:
 				changeFragment(FRAGMENTS.SHORT_RANGE_CHART);
 				break;
-			case 11: // "Local System"
+			case NavigationDrawerFragment.NAV_LOCAL_SYSTEM:
 				changeFragment(FRAGMENTS.LOCAL_SYSTEM);
+				break;
+			case NavigationDrawerFragment.NAV_BUY_NEW_SHIP:
+				changeFragment(FRAGMENTS.BUY_NEW_SHIP);
+				break;
+			case NavigationDrawerFragment.NAV_SHIP_CUSTOMIZATION:
+				changeFragment(FRAGMENTS.SHIP_CUSTOMIZATION);
+				break;
+			case NavigationDrawerFragment.NAV_MISSIONS:
+			case NavigationDrawerFragment.NAV_LOCAL_CONTRACTS:
+			case NavigationDrawerFragment.NAV_OUTPOSTS_STATIONS:
+				changeFragment(FRAGMENTS.MISSIONS);
+				break;
+			case NavigationDrawerFragment.NAV_DEBUG_MENU:
+				changeFragment(FRAGMENTS.DEBUG_MENU);
 				break;
 		}
 	}
@@ -440,29 +526,36 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 	@SuppressWarnings("ConstantConditions")
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
-		try {
-			menu.findItem(R.id.hotkey1).setTitle(Shortcuts[gameState.Shortcut1][0]);
-			menu.findItem(R.id.hotkey2).setTitle(Shortcuts[gameState.Shortcut2][0]);
-			menu.findItem(R.id.hotkey3).setTitle(Shortcuts[gameState.Shortcut3][0]);
-			menu.findItem(R.id.hotkey4).setTitle(Shortcuts[gameState.Shortcut4][0]);
-		} catch (Exception ignored) {
-		}
+		boolean validGame = gameState != null && GameState.isValid;
+		boolean inNewGame = gameState != null && gameState.currentState == FRAGMENTS.NEW_GAME;
+		boolean inEncounter = gameState != null && gameState.currentState == FRAGMENTS.ENCOUNTER;
+
+		setMenuItemEnabled(menu, R.id.menuSaveNow, validGame && !inNewGame);
+		setMenuItemEnabled(menu, R.id.menuSaveSlot1, validGame && !inNewGame);
+		setMenuItemEnabled(menu, R.id.menuSaveSlot2, validGame && !inNewGame);
+		setMenuItemEnabled(menu, R.id.menuSaveSlot3, validGame && !inNewGame);
+		setMenuItemEnabled(menu, R.id.menuLoadAutosave, hasAutosave());
+		setMenuItemEnabled(menu, R.id.menuLoadSlot1, hasManualSaveSlot(1));
+		setMenuItemEnabled(menu, R.id.menuLoadSlot2, hasManualSaveSlot(2));
+		setMenuItemEnabled(menu, R.id.menuLoadSlot3, hasManualSaveSlot(3));
+		setMenuItemEnabled(menu, R.id.menuRetire, validGame && !inNewGame && !inEncounter);
 		return true;
+	}
+
+	private void setMenuItemEnabled(Menu menu, int id, boolean enabled) {
+		MenuItem item = menu.findItem(id);
+		if (item != null) {
+			item.setEnabled(enabled);
+		}
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		if (mNavigationDrawerFragment != null) {
-			if (!mNavigationDrawerFragment.isDrawerOpen()) {
-				MenuInflater inflater = getMenuInflater();
-				if (gameState == null || gameState.currentState == FRAGMENTS.NEW_GAME || gameState.currentState == FRAGMENTS.ENCOUNTER) {
-					inflater.inflate(R.menu.help_menu, menu);
-				} else {
-					inflater.inflate(R.menu.in_game, menu);
-				}
-				restoreActionBar();
-				return true;
-			}
+			MenuInflater inflater = getMenuInflater();
+			inflater.inflate(R.menu.in_game, menu);
+			restoreActionBar();
+			return true;
 		}
 		return super.onCreateOptionsMenu(menu);
 	}
@@ -473,27 +566,38 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
-		String call = "";
 		Popup popup;
 		DrawerLayout drawer_layout = (DrawerLayout) findViewById(R.id.drawer_layout);
 		if (drawer_layout != null && id != R.id.submenuGame && id != R.id.submenuHelp) {
 			drawer_layout.closeDrawers();
 		}
 		switch (id) {
-			case R.id.hotkey1:
-				call = Shortcuts[gameState.Shortcut1][0];
-				break;
-			case R.id.hotkey2:
-				call = Shortcuts[gameState.Shortcut2][0];
-				break;
-			case R.id.hotkey3:
-				call = Shortcuts[gameState.Shortcut3][0];
-				break;
-			case R.id.hotkey4:
-				call = Shortcuts[gameState.Shortcut4][0];
-				break;
 			case R.id.menuOptions:
 				changeFragment(FRAGMENTS.OPTIONS);
+				return true;
+			case R.id.menuSaveNow:
+				btnManualSaveNow(null);
+				return true;
+			case R.id.menuLoadAutosave:
+				btnLoadAutosave(null);
+				return true;
+			case R.id.menuSaveSlot1:
+				btnSaveSlot1(null);
+				return true;
+			case R.id.menuSaveSlot2:
+				btnSaveSlot2(null);
+				return true;
+			case R.id.menuSaveSlot3:
+				btnSaveSlot3(null);
+				return true;
+			case R.id.menuLoadSlot1:
+				btnLoadSlot1(null);
+				return true;
+			case R.id.menuLoadSlot2:
+				btnLoadSlot2(null);
+				return true;
+			case R.id.menuLoadSlot3:
+				btnLoadSlot3(null);
 				return true;
 			case R.id.menuNewGame:
 				popup = new Popup(this, "Really start new game?",
@@ -524,13 +628,21 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 				popupQueue.push(popup);
 				showNextPopup();
 				return true;
-			case R.id.menuShortcuts:
-				changeFragment(FRAGMENTS.SHORTCUTS);
-				return true;
 			case R.id.menuHighscores:
 				ViewHighScores();
 				return true;
 			case R.id.menuClearHighscore:
+				popup = new Popup(this, "Clear highscores?",
+					"This removes every local highscore entry on this device.", "",
+					"Clear", "Cancel", new Popup.buttonCallback() {
+					@Override
+					public void execute(Popup popup, View view) {
+						getSharedPreferences("HighScore", MODE_PRIVATE).edit().clear().commit();
+						Toast.makeText(Main.this, "Highscores cleared.", Toast.LENGTH_LONG).show();
+					}
+				}, cbShowNextPopup);
+				popupQueue.push(popup);
+				showNextPopup();
 				return true;
 			case R.id.menuHelpCurrentScreen:
 				String helpText = "No help available.";
@@ -570,6 +682,15 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 						break;
 					case LOCAL_SYSTEM:
 						helpText = "The Local System screen is the Space Trader 2.0 layer. Each solar system now has generated planets, stations, ruins, asteroid belts, derelicts, bases, aliens, and guild influence. Scan, explore, mine, trade locally, take guild contracts, or fight pirate activity without leaving the original system-to-system trading game.";
+						break;
+					case LOCAL_TRAVEL:
+						helpText = "This is a short in-system travel leg. Explore and Mine/Salvage operations now spend a little time moving through local space before resolving the result.";
+						break;
+					case FLEET_MANAGEMENT:
+						helpText = "Fleet Management assigns hired crew to travel duties. These duties can support repairs, scanning, targeting, and transmissions during travel and fleet encounters.";
+						break;
+					case MISSIONS:
+						helpText = "The Mission Board gathers classic quests, current guild contracts, and local holding or station leads in one place.";
 						break;
 					case DEBUG_MENU:
 						helpText = "Temporary development tools for testing Space Trader 2.0: credits, fuel, hull, contract clearing, and debug travel. Disable it before serious play.";
@@ -633,13 +754,13 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 				return true;
 			case R.id.menuHelpMenu:
 				popup = new Popup(this, "Tips",
-					"The menu consists of three main menu choices:\n\"Commands\", \"Game\", and \"Help\".\n\n" +
-						"\"Commands\" allows you to issue commands while you are docked at a system. You can use this to switch between the main screens.\n\n" +
-						"\"\"Game\" gives access to game functions:\n" +
+					"The left drawer is the navigation menu. Tap a section such as Trade, Maps, Personnel, or Missions to expand it, then choose the screen you want.\n\n" +
+						"The top-right menu is the game menu. It gives access to settings, saving, loading, help, and run-wide actions from every screen.\n\n" +
+						"Game menu choices:\n" +
 						"- \"New Game\" starts a new game.\n" +
-						"- \"Retire\" ends the game by retiring the commander. Your score is calculated and you can enter the high-score table if you qualify. However, the preferred way to end a game is by claiming a moon, which is something you have to work for.\n" +
-						"- \"Options\" gives access to the game preferences.\n" +
-						"- \"Shortcuts\" allows you to set new preferences for the four shortcut buttons in the top right corner of many screens.\n" +
+						"- \"Retire\" ends the game by retiring the commander. Your score is calculated and you can enter the high-score table if you qualify.\n" +
+						"- \"Options / Settings\" gives access to game preferences and save management.\n" +
+						"- \"Save\" and \"Load\" entries give quick access to autosave and manual slots.\n" +
 						"- \"High Scores\" shows the high-score list.\n" +
 						"- \"Clear High Scores\" wipes the current high-score list.", "", "OK", cbShowNextPopup
 				);
@@ -650,7 +771,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 				popup = new Popup(this, "How to play",
 					"Space Trader is a strategy game in which the ultimate goal is to make enough cash to buy your own moon, to which you can retire. The most straightforward way to make cash is to trade goods between solar systems, hopefully making a profit. However, you can also decide to become a pirate and rob innocent traders of their wares. You can also earn an income by bounty hunting.\n\n" +
 						"The Help menu in the game offers basic information, enough to play the game. The menu choice \"Current Screen\" always gives information on the screen which is currently shown. The rest of the menu choices give a basic overview of the game, of which this particular text is the first. The First Steps choice is especially interesting for a first-time player, since it describes all the steps you need to perform your first days as a trader.\n\n" +
-						"You have to change screens often. All main screens are accessible through the menu. The four choices you have to use the most (Buy Cargo, Sell Cargo, Ship Yard and Short Range Chart) have their own shortcut button at the top right corner of every screen. These shortcut functions can be changed from the Shortcuts menu option in the Game menu.\n\n" +
+						"You have to change screens often. Main screens are grouped in the left drawer, with Trade, Maps, Personnel, and Missions sections that expand when tapped. The top-right menu handles game-level actions such as settings, save/load, highscores, and help.\n\n" +
 						"At the start of the game you have a small spaceship of the Gnat type, armed with a simple pulse laser, and 1000 credits to start your ventures. While docked, you can buy or sell trade goods; buy or sell equipment for your ship; buy fuel, repairs or even a new ship at the Ship Yard; hire mercenaries; visit the bank to get a loan; get information on your status, the galaxy or nearby solar systems; and activate the warp to another system.\n\n" +
 						"When you have activated the warp, you materialise nearby the target system you selected. The last distance you have to travel on your impulse engines. During that time, you may encounter pirates, police ships, or other traders.",
 					"", "OK", cbShowNextPopup
@@ -766,40 +887,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 				showNextPopup();
 				return true;
 		}
-		if (call.equals("B")) {
-			changeFragment(FRAGMENTS.BUY_CARGO);
-		} else if (call.equals("S")) {
-			changeFragment(FRAGMENTS.SELL_CARGO);
-		} else if (call.equals("Y")) {
-			changeFragment(FRAGMENTS.SHIPYARD);
-		} else if (call.equals("E")) {
-			changeFragment(FRAGMENTS.BUY_EQUIPMENT);
-		} else if (call.equals("Q")) {
-			changeFragment(FRAGMENTS.SELL_EQUIPMENT);
-		} else if (call.equals("P")) {
-			changeFragment(FRAGMENTS.PERSONNEL_ROSTER);
-		} else if (call.equals("K")) {
-			changeFragment(FRAGMENTS.BANK);
-		} else if (call.equals("I")) {
-			changeFragment(FRAGMENTS.SYSTEM_INFORMATION);
-		} else if (call.equals("C")) {
-			changeFragment(FRAGMENTS.COMMANDER_STATUS);
-		} else if (call.equals("G")) {
-			if (gameState.currentState == FRAGMENTS.GALACTIC_CHART) {
-				changeFragment(FRAGMENTS.SHORT_RANGE_CHART);
-			} else {
-				changeFragment(FRAGMENTS.GALACTIC_CHART);
-			}
-		} else if (call.equals("W")) {
-			if (gameState.currentState == FRAGMENTS.SHORT_RANGE_CHART) {
-				changeFragment(FRAGMENTS.GALACTIC_CHART);
-			} else {
-				changeFragment(FRAGMENTS.SHORT_RANGE_CHART);
-			}
-		} else {
-			return super.onOptionsItemSelected(item);
-		}
-		return true;
+		return super.onOptionsItemSelected(item);
 	}
 
 	public void showFirstStepsHelp() {
@@ -900,6 +988,15 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 				break;
 			case LOCAL_SYSTEM:
 				currentFragment = new FragmentLocalSystem();
+				break;
+			case LOCAL_TRAVEL:
+				currentFragment = new FragmentLocalTravel();
+				break;
+			case FLEET_MANAGEMENT:
+				currentFragment = new FragmentFleetManagement();
+				break;
+			case MISSIONS:
+				currentFragment = new FragmentMissions();
 				break;
 			case DEBUG_MENU:
 				currentFragment = new FragmentDebugMenu();
@@ -1011,8 +1108,7 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 	}
 
 	// FragmentCommanderStatus
-	@SuppressWarnings("UnusedParameters")
-	public void CommanderStatusQuestsCallback(View view) {
+	public String getOpenQuestsText() {
 		String quests = "";
 		if (gameState.MonsterStatus == 1) {
 			quests += "Kill the space monster at Acamar.\n";
@@ -1104,7 +1200,12 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 			quests = "There are no open quests.\n";
 		}
 
-		Popup popup = new Popup(this, "Open Quests", quests, "", "OK", cbShowNextPopup);
+		return quests;
+	}
+
+	@SuppressWarnings("UnusedParameters")
+	public void CommanderStatusQuestsCallback(View view) {
+		Popup popup = new Popup(this, "Open Quests", getOpenQuestsText(), "", "OK", cbShowNextPopup);
 		popupQueue.push(popup);
 		showNextPopup();
 	}
@@ -2462,6 +2563,142 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 	@SuppressWarnings("UnusedParameters")
 	public void SystemInformationLocalSystemCallback(View view) {
 		changeFragment(FRAGMENTS.LOCAL_SYSTEM);
+	}
+
+	public void beginLocalActionTravel(int actionType, int systemIndex, int bodyIndex) {
+		gameState.ensureExpansionState();
+		gameState.PendingLocalActionType = actionType;
+		gameState.PendingLocalActionSystem = systemIndex;
+		gameState.PendingLocalActionBody = bodyIndex;
+		gameState.PendingLocalActionTicks = 2 + gameState.GetRandom(3);
+		if (!gameState.hasPendingLocalAction()) {
+			gameState.clearPendingLocalAction();
+			Toast.makeText(this, "No valid local destination selected.", Toast.LENGTH_SHORT).show();
+			return;
+		}
+		changeFragment(FRAGMENTS.LOCAL_TRAVEL);
+	}
+
+	public String localTravelTickLine() {
+		if (!gameState.hasPendingLocalAction()) {
+			return "Local flight plan cleared.";
+		}
+		SolarSystem system = gameState.SolarSystem[gameState.PendingLocalActionSystem];
+		StellarBody body = system.bodies[gameState.PendingLocalActionBody];
+		String bodyName = GetSystemName(system) + "-" + body.orbit;
+		if (gameState.PendingLocalActionType == GameState.LOCAL_ACTION_EXPLORE) {
+			String[] lines = new String[]{
+				"Plotting a survey arc around " + bodyName + ".",
+				"Scanning local debris, beacon traffic, and thermal ghosts.",
+				"Adjusting approach vector through " + gameState.getGuildName(system.controllingGuild) + " patrol space.",
+				"Mapping a clean landing corridor.",
+				"Comparing sensor returns against the port rumors."
+			};
+			return lines[gameState.GetRandom(lines.length)];
+		}
+		String[] lines = new String[]{
+			"Spooling work drones for " + bodyName + ".",
+			"Checking hull clearances before the close pass.",
+			"Locking cargo racks and salvage clamps.",
+			"Reading mineral scatter against old station charts.",
+			"Watching for claim beacons and ambush transponders."
+		};
+		return lines[gameState.GetRandom(lines.length)];
+	}
+
+	public void finishLocalActionTravel() {
+		if (!gameState.hasPendingLocalAction()) {
+			gameState.clearPendingLocalAction();
+			changeFragment(FRAGMENTS.LOCAL_SYSTEM);
+			return;
+		}
+		SolarSystem system = gameState.SolarSystem[gameState.PendingLocalActionSystem];
+		StellarBody body = system.bodies[gameState.PendingLocalActionBody];
+		String title = gameState.PendingLocalActionType == GameState.LOCAL_ACTION_EXPLORE ? "Exploration" : "Mine/Salvage";
+		String result = gameState.PendingLocalActionType == GameState.LOCAL_ACTION_EXPLORE ?
+			resolveLocalExplore(system, body) : resolveLocalMineOrSalvage(system, body);
+		gameState.clearPendingLocalAction();
+		changeFragment(FRAGMENTS.LOCAL_SYSTEM);
+		addPopup(new Popup(this, title, result, "", "OK", cbShowNextPopup));
+		saveGame();
+	}
+
+	private String resolveLocalExplore(SolarSystem system, StellarBody body) {
+		body.discovered = true;
+		body.surveyed = true;
+		int roll = gameState.GetRandom(100);
+		int credits = 50 + system.discoveryValue + body.anomalyLevel * 80 + gameState.Ship.PilotSkill() * 15 + gameState.ScannerLevel * 35 + (gameState.Ship.HasGadget(GameState.SENSORANALYZER) ? 125 : 0);
+		String result = "Explored " + GetSystemName(system) + "-" + body.orbit + ". ";
+		if (body.hasRuins || roll < body.anomalyLevel * (8 + gameState.ScannerLevel + (gameState.Ship.HasGadget(GameState.SENSORANALYZER) ? 3 : 0))) {
+			gameState.AlienRelics += 1;
+			gameState.ExoticMatter += body.anomalyLevel + gameState.ScannerLevel >= 8 ? 1 : 0;
+			gameState.GuildStanding[GameState.GUILD_SCIENTISTS] += 2;
+			gameState.Credits += credits;
+			result += "You found alien ruins and sold first-look rights for " + credits + " credits.";
+		} else if (body.hasDerelict) {
+			int salvage = 1 + gameState.GetRandom(3 + Math.max(1, body.resourceRichness) + gameState.SalvageDroneLevel + (gameState.Ship.HasGadget(GameState.DRONECONTROL) ? 2 : 0));
+			gameState.SalvageParts += salvage;
+			gameState.GuildStanding[GameState.GUILD_EXPLORERS] += 1;
+			result += "You mapped a derelict and recovered " + salvage + " salvage parts.";
+		} else {
+			int data = 1 + body.anomalyLevel / 3 + gameState.ScannerLevel / 2 + (gameState.Ship.HasGadget(GameState.SENSORANALYZER) ? 1 : 0);
+			gameState.SurveyData += data;
+			gameState.Credits += credits / 2;
+			gameState.GuildStanding[GameState.GUILD_EXPLORERS] += 1;
+			result += "Survey data +" + data + " and sold charts for " + (credits / 2) + " credits.";
+		}
+		result += gameState.advanceActiveContractProgress(GameState.CONTRACT_SURVEY, 1);
+		if (body.danger > gameState.Ship.PilotSkill() + gameState.Ship.EngineerSkill() / 2 + gameState.ScannerLevel && !(gameState.DebugEnabled && gameState.DebugGodHull)) {
+			int damage = Math.max(1, 1 + gameState.GetRandom(5 + body.danger * 2) - gameState.ScannerLevel);
+			gameState.Ship.hull = Math.max(1, gameState.Ship.hull - damage);
+			result += " The landing was rough: hull lost " + damage + ".";
+		}
+		return result + spendLocalTime(1);
+	}
+
+	private String resolveLocalMineOrSalvage(SolarSystem system, StellarBody body) {
+		body.discovered = true;
+		if (body.depleted) {
+			return "This location has already been stripped for now.";
+		}
+		String result;
+		if (body.hasDerelict) {
+			int salvage = 2 + gameState.GetRandom(4 + Math.max(1, body.resourceRichness) + gameState.SalvageDroneLevel * 2 + (gameState.Ship.HasGadget(GameState.DRONECONTROL) ? 3 : 0));
+			gameState.SalvageParts += salvage;
+			gameState.Credits += salvage * (80 + gameState.SalvageDroneLevel * 15);
+			gameState.GuildStanding[GameState.GUILD_EXPLORERS] += 1;
+			result = "Recovered " + salvage + " salvage parts from the derelict and sold scrap manifests for " + (salvage * (80 + gameState.SalvageDroneLevel * 15)) + " credits.";
+		} else if (body.resourceRichness > 0 || body.type == StellarBody.ASTEROID_BELT) {
+			int ore = 1 + gameState.GetRandom(2 + body.resourceRichness + gameState.MiningRigLevel * 2 + (gameState.Ship.HasGadget(GameState.DRONECONTROL) ? 2 : 0));
+			int free = gameState.Ship.TotalCargoBays() - gameState.Ship.FilledCargoBays();
+			int loaded = Math.min(free, ore);
+			gameState.Ship.cargo[GameState.ORE] += loaded;
+			gameState.BuyingPrice[GameState.ORE] += loaded * 10;
+			gameState.SalvageParts += Math.max(0, ore - loaded);
+			gameState.GuildStanding[GameState.GUILD_MINERS] += 1;
+			result = "Mined " + ore + " ore-equivalent. Loaded " + loaded + " ore into cargo; extra yield became salvage parts.";
+		} else {
+			result = "There is nothing worth mining here.";
+		}
+		if (gameState.GetRandom(100) < 25 + body.danger * 4 - gameState.MiningRigLevel * 4 && !(gameState.DebugEnabled && gameState.DebugGodHull)) {
+			int damage = Math.max(1, 1 + gameState.GetRandom(8 + body.danger) - gameState.MiningRigLevel);
+			gameState.Ship.hull = Math.max(1, gameState.Ship.hull - damage);
+			result += " Mining hazards damaged hull by " + damage + ".";
+		}
+		body.resourceRichness = Math.max(0, body.resourceRichness - Math.max(1, 3 - gameState.MiningRigLevel / 2));
+		body.depleted = body.resourceRichness <= 0 || body.hasDerelict;
+		return result + spendLocalTime(1);
+	}
+
+	private String spendLocalTime(int ticks) {
+		gameState.LocalActionClock += Math.max(0, ticks);
+		if (gameState.LocalActionClock >= 3) {
+			gameState.LocalActionClock -= 3;
+			IncDays(1);
+			String contract = gameState.checkGuildContractArrival();
+			return " A local operations day passed." + (contract.length() > 0 ? " " + contract : "");
+		}
+		return "";
 	}
 
 	@SuppressWarnings("UnusedParameters")
@@ -6915,6 +7152,9 @@ public class Main extends Activity implements NavigationDrawerFragment.Navigatio
 
 	private FRAGMENTS getSafeLoadedFragment() {
 		if (gameState == null || gameState.currentState == null || gameState.currentState == FRAGMENTS.NEW_GAME || gameState.currentState == FRAGMENTS.ENCOUNTER) {
+			return FRAGMENTS.SYSTEM_INFORMATION;
+		}
+		if (gameState.currentState == FRAGMENTS.LOCAL_TRAVEL && !gameState.hasPendingLocalAction()) {
 			return FRAGMENTS.SYSTEM_INFORMATION;
 		}
 		return gameState.currentState;

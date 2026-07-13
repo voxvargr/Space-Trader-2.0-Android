@@ -23,6 +23,7 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
@@ -37,6 +38,10 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import de.anderdonau.spacetrader.DataTypes.MyFragment;
 
@@ -51,6 +56,30 @@ public class NavigationDrawerFragment extends MyFragment {
 	 * Remember the position of the selected item.
 	 */
 	private static final String STATE_SELECTED_POSITION = "selected_navigation_drawer_position";
+	private static final String STATE_EXPANDED_TRADE = "expanded_trade";
+	private static final String STATE_EXPANDED_MAPS = "expanded_maps";
+	private static final String STATE_EXPANDED_PERSONNEL = "expanded_personnel";
+	private static final String STATE_EXPANDED_MISSIONS = "expanded_missions";
+
+	public static final int NAV_BUY_CARGO = 0;
+	public static final int NAV_SELL_CARGO = 1;
+	public static final int NAV_SHIPYARD = 2;
+	public static final int NAV_BUY_EQUIPMENT = 3;
+	public static final int NAV_SELL_EQUIPMENT = 4;
+	public static final int NAV_PERSONNEL_ROSTER = 5;
+	public static final int NAV_BANK = 6;
+	public static final int NAV_SYSTEM_INFORMATION = 7;
+	public static final int NAV_COMMANDER_STATUS = 8;
+	public static final int NAV_GALACTIC_CHART = 9;
+	public static final int NAV_SHORT_RANGE_CHART = 10;
+	public static final int NAV_LOCAL_SYSTEM = 11;
+	public static final int NAV_BUY_NEW_SHIP = 12;
+	public static final int NAV_SHIP_CUSTOMIZATION = 13;
+	public static final int NAV_DEBUG_MENU = 14;
+	public static final int NAV_FLEET_MANAGEMENT = 15;
+	public static final int NAV_MISSIONS = 16;
+	public static final int NAV_LOCAL_CONTRACTS = 17;
+	public static final int NAV_OUTPOSTS_STATIONS = 18;
 
 	/**
 	 * Per the design guidelines, you should show the drawer on launch until the user manually
@@ -71,9 +100,14 @@ public class NavigationDrawerFragment extends MyFragment {
 	private DrawerLayout mDrawerLayout;
 	private ListView     mDrawerListView;
 	private View         mFragmentContainerView;
+	private DrawerAdapter mDrawerAdapter;
 
 	private int mCurrentSelectedPosition = 0;
 	private boolean mUserLearnedDrawer;
+	private boolean tradeExpanded = false;
+	private boolean mapsExpanded = false;
+	private boolean personnelExpanded = false;
+	private boolean missionsExpanded = false;
 
 	public NavigationDrawerFragment() {
 	}
@@ -84,6 +118,10 @@ public class NavigationDrawerFragment extends MyFragment {
 
 		if (savedInstanceState != null) {
 			mCurrentSelectedPosition = savedInstanceState.getInt(STATE_SELECTED_POSITION);
+			tradeExpanded = savedInstanceState.getBoolean(STATE_EXPANDED_TRADE, false);
+			mapsExpanded = savedInstanceState.getBoolean(STATE_EXPANDED_MAPS, false);
+			personnelExpanded = savedInstanceState.getBoolean(STATE_EXPANDED_PERSONNEL, false);
+			missionsExpanded = savedInstanceState.getBoolean(STATE_EXPANDED_MISSIONS, false);
 		}
 
 		//		selectItem(mCurrentSelectedPosition);
@@ -107,12 +145,9 @@ public class NavigationDrawerFragment extends MyFragment {
 			}
 		});
 		//noinspection ConstantConditions
-		mDrawerListView.setAdapter(new ArrayAdapter<String>(getActionBar().getThemedContext(),
-			android.R.layout.simple_list_item_activated_1, android.R.id.text1,
-			new String[]{"Buy Cargo", "Sell Cargo", "Shipyard", "Buy Equipment", "Sell Equipment",
-				"Personnel Roster", "Bank", "System Information", "Commander Status", "Galactic Chart",
-				"Short Range Chart", "Local System"}
-		));
+		mDrawerAdapter = new DrawerAdapter(getActionBar().getThemedContext(), new ArrayList<DrawerRow>());
+		mDrawerListView.setAdapter(mDrawerAdapter);
+		rebuildDrawerRows();
 		mDrawerListView.setItemChecked(mCurrentSelectedPosition, true);
 		return mDrawerListView;
 	}
@@ -195,12 +230,89 @@ public class NavigationDrawerFragment extends MyFragment {
 		if (mDrawerListView != null) {
 			mDrawerListView.setItemChecked(position, true);
 		}
+		DrawerRow row = mDrawerAdapter == null ? null : mDrawerAdapter.getItem(position);
+		if (row == null) {
+			return;
+		}
+		if (row.section >= 0) {
+			toggleSection(row.section);
+			return;
+		}
 		if (mDrawerLayout != null) {
 			mDrawerLayout.closeDrawer(mFragmentContainerView);
 		}
 		if (mCallbacks != null) {
-			mCallbacks.onNavigationDrawerItemSelected(position);
+			mCallbacks.onNavigationDrawerItemSelected(row.navId);
 		}
+	}
+
+	private void toggleSection(int section) {
+		switch (section) {
+			case 0:
+				tradeExpanded = !tradeExpanded;
+				break;
+			case 1:
+				mapsExpanded = !mapsExpanded;
+				break;
+			case 2:
+				personnelExpanded = !personnelExpanded;
+				break;
+			case 3:
+				missionsExpanded = !missionsExpanded;
+				break;
+		}
+		rebuildDrawerRows();
+	}
+
+	private void rebuildDrawerRows() {
+		if (mDrawerAdapter == null) {
+			return;
+		}
+		mDrawerAdapter.clear();
+		addSection(0, "Trade", tradeExpanded);
+		if (tradeExpanded) {
+			addNav("Buy Goods", NAV_BUY_CARGO);
+			addNav("Sell Goods", NAV_SELL_CARGO);
+			addNav("Shipyard", NAV_SHIPYARD);
+			addNav("Buy Ships", NAV_BUY_NEW_SHIP);
+			addNav("Customize Ship", NAV_SHIP_CUSTOMIZATION);
+			addNav("Buy Equipment", NAV_BUY_EQUIPMENT);
+			addNav("Sell Equipment", NAV_SELL_EQUIPMENT);
+			addNav("Bank", NAV_BANK);
+		}
+
+		addSection(1, "Maps", mapsExpanded);
+		if (mapsExpanded) {
+			addNav("System Information", NAV_SYSTEM_INFORMATION);
+			addNav("Short Range Chart", NAV_SHORT_RANGE_CHART);
+			addNav("Galactic Chart", NAV_GALACTIC_CHART);
+			addNav("Local System", NAV_LOCAL_SYSTEM);
+		}
+
+		addSection(2, "Personnel", personnelExpanded);
+		if (personnelExpanded) {
+			addNav("Commander Status", NAV_COMMANDER_STATUS);
+			addNav("Hirelings", NAV_PERSONNEL_ROSTER);
+			addNav("Fleet Management", NAV_FLEET_MANAGEMENT);
+		}
+
+		addSection(3, "Missions", missionsExpanded);
+		if (missionsExpanded) {
+			addNav("Mission Board", NAV_MISSIONS);
+			addNav("Local Contracts", NAV_LOCAL_CONTRACTS);
+			addNav("Outposts / Stations", NAV_OUTPOSTS_STATIONS);
+		}
+
+		addNav("Debug Tools", NAV_DEBUG_MENU);
+		mDrawerAdapter.notifyDataSetChanged();
+	}
+
+	private void addSection(int section, String label, boolean expanded) {
+		mDrawerAdapter.add(new DrawerRow((expanded ? "[-] " : "[+] ") + label, -1, section, true));
+	}
+
+	private void addNav(String label, int navId) {
+		mDrawerAdapter.add(new DrawerRow("    " + label, navId, -1, false));
 	}
 
 	@Override
@@ -223,6 +335,10 @@ public class NavigationDrawerFragment extends MyFragment {
 	public void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
 		outState.putInt(STATE_SELECTED_POSITION, mCurrentSelectedPosition);
+		outState.putBoolean(STATE_EXPANDED_TRADE, tradeExpanded);
+		outState.putBoolean(STATE_EXPANDED_MAPS, mapsExpanded);
+		outState.putBoolean(STATE_EXPANDED_PERSONNEL, personnelExpanded);
+		outState.putBoolean(STATE_EXPANDED_MISSIONS, missionsExpanded);
 	}
 
 	@Override
@@ -248,14 +364,10 @@ public class NavigationDrawerFragment extends MyFragment {
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-		// If the drawer is open, show the extra app actions in the action bar. See also
-		// showGlobalContextActionBar, which controls the top-left area of the action bar.
 		if (mDrawerLayout != null && isDrawerOpen()) {
-			inflater.inflate(R.menu.drawer, menu);
 			showGlobalContextActionBar();
-		} else {
-			super.onCreateOptionsMenu(menu, inflater);
 		}
+		super.onCreateOptionsMenu(menu, inflater);
 	}
 
 	/**
@@ -286,5 +398,45 @@ public class NavigationDrawerFragment extends MyFragment {
 		 * Called when an item in the navigation drawer is selected.
 		 */
 		void onNavigationDrawerItemSelected(int position);
+	}
+
+	private static class DrawerRow {
+		final String label;
+		final int navId;
+		final int section;
+		final boolean header;
+
+		DrawerRow(String label, int navId, int section, boolean header) {
+			this.label = label;
+			this.navId = navId;
+			this.section = section;
+			this.header = header;
+		}
+
+		@Override
+		public String toString() {
+			return label;
+		}
+	}
+
+	private static class DrawerAdapter extends ArrayAdapter<DrawerRow> {
+		DrawerAdapter(android.content.Context context, List<DrawerRow> rows) {
+			super(context, android.R.layout.simple_list_item_activated_1, android.R.id.text1, rows);
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			View view = super.getView(position, convertView, parent);
+			TextView text = (TextView) view.findViewById(android.R.id.text1);
+			DrawerRow row = getItem(position);
+			if (row != null && row.header) {
+				text.setTypeface(Typeface.DEFAULT_BOLD);
+				text.setTextSize(20);
+			} else {
+				text.setTypeface(Typeface.DEFAULT);
+				text.setTextSize(18);
+			}
+			return view;
+		}
 	}
 }
